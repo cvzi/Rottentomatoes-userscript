@@ -13,7 +13,7 @@
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js
 // @require     https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     14
+// @version     15
 // @connect     www.rottentomatoes.com
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -53,6 +53,7 @@
 // @include     https://www.themoviedb.org/tv/*
 // @include     http://letterboxd.com/film/*
 // @include     https://letterboxd.com/film/*
+// @exclude     https://letterboxd.com/film/*/image*
 // @include     http://www.tvmaze.com/shows/*
 // @include     https://www.tvmaze.com/shows/*
 // @include     http://www.tvguide.com/tvshows/*
@@ -289,8 +290,12 @@ function handleResponse(response) {
     }
     
     data[prop].sort(function(a,b) {
-      a.matchQuality = matchQuality(a.name, a.year);
-      b.matchQuality = matchQuality(b.name, b.year);
+      if(!a.hasOwnProperty('matchQuality')) {
+        a.matchQuality = matchQuality(a.name, a.year);
+      }
+      if(!b.hasOwnProperty('matchQuality')) {
+        b.matchQuality = matchQuality(b.name, b.year);
+      }
       
       return b.matchQuality - a.matchQuality;
     });
@@ -718,7 +723,6 @@ function main() {
 
   for(var name in sites) {
     var site = sites[name];
-    if(site.host.some(function(e) {return ~this.indexOf(e)}, document.location.hostname))
     if(site.host.some(function(e) {return ~this.indexOf(e)}, document.location.hostname) && site.condition()) {
       for(var i = 0; i < site.products.length; i++) {
         if(site.products[i].condition()) {
