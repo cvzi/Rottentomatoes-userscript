@@ -320,6 +320,7 @@ function showMeter(arr, time) {
     bottom :0, 
     right: 0,
     minWidth: 100,
+    maxWidth: 400,
     maxHeight: "95%",
     overflow: "auto",
     backgroundColor: "#fff",
