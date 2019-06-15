@@ -229,7 +229,7 @@ async function loadMeter(query, type, year) {
         handleResponse(response);
       },
       onerror: function(response) { 
-        console.log("GM.xmlHttpRequest Error: "+response.status+"\nURL: "+requestURL+"\nResponse:\n"+response.responseText);
+        console.log("Rottentomatoes GM.xmlHttpRequest Error: "+response.status+"\nURL: "+requestURL+"\nResponse:\n"+response.responseText);
       },
     });
   }
@@ -253,7 +253,7 @@ function handleResponse(response) {
     }
   }
 
-  if(data[prop]) {
+  if(data[prop] && data[prop].length) {
     // Sort results by closest match
     function matchQuality(title, year) {
       if(title == current.query && year == current.year) {
@@ -302,7 +302,7 @@ function handleResponse(response) {
     
     showMeter(data[prop], new Date(response.time));
   } else {
-    console.log("No results for "+current.query);
+    console.log("Rottentomatoes: No results for "+current.query);
   }
 }
 
@@ -331,6 +331,7 @@ function showMeter(arr, time) {
     zIndex: "5010001",
     fontFamily : "Helvetica,Arial,sans-serif"
   });
+
   
   // First result
   $('<div><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[0].url + '">' + arr[0].name + " (" + arr[0].year + ")</a>" + meterBar(arr[0]) +  '</div>').appendTo(main);
@@ -732,6 +733,7 @@ function main() {
             data = site.products[i].data();
           } catch(e) {
             data = false;
+            console.log("Rottentomatoes Error:")
             console.log(e);
           }
           if(data) {
