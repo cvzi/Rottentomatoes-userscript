@@ -13,7 +13,7 @@
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js
 // @require     https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     15
+// @version     16
 // @connect     www.rottentomatoes.com
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -81,7 +81,7 @@
 
 
 var baseURL = "https://www.rottentomatoes.com"
-var baseURL_search = baseURL + "/api/private/v2.0/search/?limit=20&q={query}";
+var baseURL_search = baseURL + "/api/private/v2.0/search/?limit=100&q={query}&t={type}";
 var baseURL_openTab = baseURL + "/search/?search={query}";
 const cacheExpireAfterHours = 4;
 const emoji_tomato = 0x1F345;
@@ -93,15 +93,23 @@ function minutesSince(time) {
   return seconds>60?parseInt(seconds/60)+" min ago":"now";
 }
 
+var parseLDJSON_cache = {}
 function parseLDJSON(keys, condition) {
   if(document.querySelector('script[type="application/ld+json"]')) {
     var data = [];
     var scripts = document.querySelectorAll('script[type="application/ld+json"]');
     for(let i = 0; i < scripts.length; i++) {
-      try {
-        var jsonld = JSON.parse(scripts[i].innerText);
-      } catch(e) {
-        continue;
+      var jsonld;
+      if (scripts[i].innerText in parseLDJSON_cache) {
+        jsonld = parseLDJSON_cache[scripts[i].innerText]
+      } else {
+        try {
+          jsonld = JSON.parse(scripts[i].innerText);
+          parseLDJSON_cache[scripts[i].innerText] = jsonld
+        } catch(e) {
+          parseLDJSON_cache[scripts[i].innerText] = null
+          continue;
+        }
       }
       if(jsonld) {
         if(Array.isArray(jsonld)) {
@@ -189,10 +197,12 @@ async function loadMeter(query, type, year) {
   current.query = query;
   current.year = year;
   
-  let url = baseURL_search.replace("{query}", encodeURIComponent(query));
-  
+  let rottenType = type==="movie"?"movie":"tvSeries"
+
+  let url = baseURL_search.replace("{query}", encodeURIComponent(query)).replace("{type}", encodeURIComponent(rottenType));
+
   let cache = JSON.parse(await GM.getValue("cache","{}"));
-  
+
   // Delete cached values, that are expired
   for(var prop in cache) {
     if((new Date()).getTime() - (new Date(cache[prop].time)).getTime() > cacheExpireAfterHours*60*60*1000) {
