@@ -13,7 +13,7 @@
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js
 // @require     https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     17
+// @version     18
 // @connect     www.rottentomatoes.com
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -77,6 +77,9 @@
 // @include     http://epguides.com/*
 // @include     http://www.epguides.com/*
 // @include     https://sharetv.com/shows/*
+// @include     http://www.cc.com/*
+// @include     https://www.tvhoard.com/*
+// @include     https://www.amc.com/*
 // ==/UserScript==
 
 
@@ -151,7 +154,7 @@ function meterBar(data) {
   let width = 0;
   let textInside = "";
   let textAfter = "";
-  
+
   if (data.meterClass == "certified_fresh") {
     barColor = "#C91B22";
     color = "yellow";
@@ -178,9 +181,9 @@ function meterBar(data) {
     textInside = "N/A";
     width = 100
   }
-  
-  return '<div style="width:100px; overflow: hidden;height: 20px;background-color: '+bgColor+';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' + 
-    '<div style="width:'+ data.meterScore +'%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter +'</div>'; 
+
+  return '<div style="width:100px; overflow: hidden;height: 20px;background-color: '+bgColor+';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+    '<div style="width:'+ data.meterScore +'%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter +'</div>';
 }
 
 var current = {
@@ -192,11 +195,11 @@ var current = {
 
 async function loadMeter(query, type, year) {
   // Load data from rotten tomatoes search API or from cache
-  
+
   current.type = type;
   current.query = query;
   current.year = year;
-  
+
   let rottenType = type==="movie"?"movie":"tvSeries"
 
   let url = baseURL_search.replace("{query}", encodeURIComponent(query)).replace("{type}", encodeURIComponent(rottenType));
@@ -209,7 +212,7 @@ async function loadMeter(query, type, year) {
       delete cache[prop];
     }
   }
-  
+
   // Check cache or request new content
   if(url in cache) {
     // Use cached response
@@ -220,25 +223,25 @@ async function loadMeter(query, type, year) {
       url: url,
       onload: function(response) {
         // Save to chache
-        
+
         response.time = (new Date()).toJSON();
-        
+
         // Chrome fix: Otherwise JSON.stringify(cache) omits responseText
         var newobj = {};
         for(var key in response) {
           newobj[key] = response[key];
         }
         newobj.responseText = response.responseText;
-        
-        
+
+
         cache[url] = newobj;
 
-        
+
         GM.setValue("cache",JSON.stringify(cache));
-        
+
         handleResponse(response);
       },
-      onerror: function(response) { 
+      onerror: function(response) {
         console.log("Rottentomatoes GM.xmlHttpRequest Error: "+response.status+"\nURL: "+requestURL+"\nResponse:\n"+response.responseText);
       },
     });
@@ -247,9 +250,9 @@ async function loadMeter(query, type, year) {
 
 function handleResponse(response) {
   // Handle GM.xmlHttpRequest response
-  
+
   let data = JSON.parse(response.responseText);
-  
+
   // Adapt type name from original metacritic type to rotten tomatoes type
   let prop;
   if(current.type == "movie") {
@@ -274,13 +277,13 @@ function handleResponse(response) {
       }
       if(title.replace(/\(.+\)/, "").trim() == current.query && current.year) {
         return 100 - Math.abs(year - current.year);
-      }   
+      }
       if(title == current.query) {
         return 7;
       }
       if(title.replace(/\(.+\)/, "").trim() == current.query) {
         return 6;
-      } 
+      }
       if(title.startsWith(current.query)) {
         return 5;
       }
@@ -298,7 +301,7 @@ function handleResponse(response) {
       }
       return 0;
     }
-    
+
     data[prop].sort(function(a,b) {
       if(!a.hasOwnProperty('matchQuality')) {
         a.matchQuality = matchQuality(a.name, a.year);
@@ -306,10 +309,10 @@ function handleResponse(response) {
       if(!b.hasOwnProperty('matchQuality')) {
         b.matchQuality = matchQuality(b.name, b.year);
       }
-      
+
       return b.matchQuality - a.matchQuality;
     });
-    
+
     showMeter(data[prop], new Date(response.time));
   } else {
     console.log("Rottentomatoes: No results for "+current.query);
@@ -326,8 +329,8 @@ function showMeter(arr, time) {
   let main,div;
   div = main = $('<div id="mcdiv321rotten"></div>').appendTo(document.body);
   div.css({
-    position:"fixed", 
-    bottom :0, 
+    position:"fixed",
+    bottom :0,
     right: 0,
     minWidth: 100,
     maxWidth: 400,
@@ -343,21 +346,21 @@ function showMeter(arr, time) {
     fontFamily : "Helvetica,Arial,sans-serif"
   });
 
-  
+
   // First result
   $('<div class="firstResult"><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[0].url + '">' + arr[0].name + " (" + arr[0].year + ")</a>" + meterBar(arr[0]) +  '</div>').appendTo(main);
-  
+
   // Shall the following results be collapsed by default?
   if((arr.length > 1 && arr[0].matchQuality > 10) || arr.length > 10) {
     let a = $('<span style="color:gray;font-size: x-small">More results...</span>').appendTo(main).click(function() { more.css("display", "block"); this.parentNode.removeChild(this); });
     let more = div = $("<div style=\"display:none\"></div>").appendTo(main);
   }
-  
+
   // More results
   for(let i = 1; i < arr.length; i++) {
     $('<div><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[i].url + '">' +arr[i].name + " (" + arr[i].year + ")</a>" + meterBar(arr[i]) +  '</div>').appendTo(div);
   }
-  
+
   // Footer
   let sub = $("<div></div>").appendTo(main);
   $('<time style="color:#b6b6b6; font-size: 11px;" datetime="'+time+'" title="'+time.toLocaleTimeString()+" "+time.toLocaleDateString()+'">'+minutesSince(time)+'</time>').appendTo(sub);
@@ -365,7 +368,7 @@ function showMeter(arr, time) {
   $('<span title="Hide me" style="cursor:pointer; float:right; color:#b6b6b6; font-size: 11px; padding-left:5px;padding-top:3px">&#10062;</span>').appendTo(sub).click(function() {
     document.body.removeChild(this.parentNode.parentNode);
   });
-  
+
 }
 
 
@@ -390,12 +393,12 @@ var sites = {
     condition : () => !~document.location.pathname.indexOf("/mediaviewer") && !~document.location.pathname.indexOf("/mediaindex") && !~document.location.pathname.indexOf("/videoplayer"),
     products : [
     {
-      condition : function() { 
+      condition : function() {
         let e = document.querySelector("meta[property='og:type']");
         if(e) {
           return e.content == "video.movie"
         }
-        return false; 
+        return false;
       },
       type : "movie",
       data : function() {
@@ -420,7 +423,7 @@ var sites = {
              year = parseInt(jsonld[1].match(/\d{4}/)[0]);
         }
         if(name != null && year != null) {
-          return [name, year]; // Use original title 
+          return [name, year]; // Use original title
         }
         if(document.querySelector(".originalTitle") && document.querySelector(".title_wrapper h1")) {
            return [document.querySelector(".title_wrapper h1").firstChild.data.trim(), year] // Use localized title
@@ -436,12 +439,12 @@ var sites = {
       }
     },
     {
-      condition : function() { 
+      condition : function() {
         var e = document.querySelector("meta[property='og:type']");
         if(e) {
           return e.content == "video.tv_show"
         }
-        return false; 
+        return false;
       },
       type : "tv",
       data : function() {
@@ -457,8 +460,8 @@ var sites = {
           try {
             year = parseInt(jsonld["datePublished"].match(/\d{4}/)[0]);
           } catch(e) {}
-          return [jsonld["name"], year] 
-        } 
+          return [jsonld["name"], year]
+        }
 
       }
     }
@@ -486,7 +489,7 @@ var sites = {
         } else if(document.querySelector(".release_data .data")) {
           year = document.querySelector(".release_data .data").textContent.match(/(\d{4})/)[1]
         }
-        
+
         return [document.querySelector("meta[property='og:title']").content, year]
       }
     },
@@ -502,7 +505,7 @@ var sites = {
         } else if(document.querySelector(".release_data .data")) {
           year = document.querySelector(".release_data .data").textContent.match(/(\d{4})/)[1]
         }
-        
+
         return [title, year];
       }
     }
@@ -543,7 +546,7 @@ var sites = {
         var year = null;
         try {
         var tds = document.querySelectorAll("#body table:nth-child(2) tr:first-child table table table td");
-        for(var i = 0; i< tds.length; i++) { 
+        for(var i = 0; i< tds.length; i++) {
           if(~tds[i].innerText.indexOf("Release Date")) {
             year = parseInt(tds[i].innerText.match(/\d{4}/)[0]);
             break;
@@ -609,7 +612,7 @@ var sites = {
         try {
           year = parseInt(document.querySelector(".release_date").innerText.match(/\d{4}/)[0]);
         } catch(e) {}
-        
+
         return [document.querySelector("meta[property='og:title']").content, year]
       }
     },
@@ -690,7 +693,7 @@ var sites = {
         try {
           year = parseInt(document.querySelector("*[itemprop=datePublished]").content.match(/\d{4}/)[0])
         } catch(e) {}
-        
+
         try {
           return [ document.querySelector(".title-primary").textContent.match(/‘(.+?)’/)[1] , year ];
         } catch(e) {
@@ -737,11 +740,44 @@ var sites = {
       data : () => document.querySelector("meta[property='og:title']").content
     }]
   },
-
+  'ComedyCentral' : {
+    host : ['cc.com'],
+    condition : () => document.location.pathname.startsWith("/shows/"),
+    products : [{
+      condition : () => document.location.pathname.split("/").length === 3 && document.querySelector("meta[property='og:title']"),
+      type : 'tv',
+      data : () => document.querySelector("meta[property='og:title']").content
+    }]
+  },
+  'TVHoard' : {
+    host : ['tvhoard.com'],
+    condition : Always,
+    products : [{
+      condition : () => document.location.pathname.split("/").length === 3 && document.location.pathname.split('/')[1] === 'titles' && !document.querySelector('app-root title-secondary-details-panel .seasons') && document.querySelector('app-root title-page-container h1.title a'),
+      type : 'movie',
+      data : () => [document.querySelector('app-root title-page-container h1.title a').textContent.trim(), document.querySelector('app-root title-page-container title-primary-details-panel h1.title .year').textContent.trim().substring(1,5)]
+    },
+    {
+      condition : () => document.location.pathname.split("/").length === 3 && document.location.pathname.split('/')[1] === 'titles' && document.querySelector('app-root title-secondary-details-panel .seasons') && document.querySelector('app-root title-page-container h1.title a'),
+      type : 'tv',
+      data : () => document.querySelector('app-root title-page-container h1.title a').textContent.trim()
+    }]
+  },
+  'AMC' : {
+    host : ['amc.com'],
+    condition : () => document.location.pathname.startsWith("/shows/"),
+    products : [
+    {
+      condition : () => document.location.pathname.split("/").length === 3 && document.querySelector("meta[property='og:type']") && document.querySelector("meta[property='og:type']").content == 'tv_show',
+      type : 'tv',
+      data : () => document.querySelector("meta[property='og:title']").content
+    }]
+  },
 };
 
 
 function main() {
+  var dataFound = false;
 
   for(var name in sites) {
     var site = sites[name];
@@ -763,6 +799,7 @@ function main() {
             } else {
               loadMeter(data.trim(), site.products[i].type);
             }
+            dataFound = true
           }
           break;
         }
@@ -770,13 +807,14 @@ function main() {
       break;
     }
   }
+  return dataFound;
 }
 
 
 
 (function() {
 
-  main();
+  const firstRunResult = main();
   var lastLoc = document.location.href;
   var lastContent = document.body.innerText;
   var lastCounter = 0;
@@ -786,16 +824,23 @@ function main() {
       lastCounter++;
     } else {
       lastCounter = 0;
-      main();
+      let re = main();
+      if(!re) { // No page matched or no data found
+        window.setTimeout(newpage, 1000);
+      }
     }
   }
   window.setInterval(function() {
     if(document.location.href != lastLoc) {
       lastLoc = document.location.href;
       $("#mcdiv321rotten").remove();
-        
+
       window.setTimeout(newpage,1000);
     }
   },500);
 
+  if (!firstRunResult) {
+    // Initial run had no match, let's try again there may be new content
+    window.setTimeout(main, 2000);
+  }
 })();
