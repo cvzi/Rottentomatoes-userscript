@@ -10,9 +10,9 @@
 // @grant       GM.xmlHttpRequest
 // @grant       GM.setValue
 // @grant       GM.getValue
-// @require     http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js
+// @require     http://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     20
+// @version     21
 // @connect     www.rottentomatoes.com
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -393,18 +393,29 @@ var sites = {
     condition : () => !~document.location.pathname.indexOf("/mediaviewer") && !~document.location.pathname.indexOf("/mediaindex") && !~document.location.pathname.indexOf("/videoplayer"),
     products : [
     {
-      condition : function() {
-        let e = document.querySelector("meta[property='og:type']");
-        if(e) {
-          return e.content == "video.movie"
+      condition: function () {
+        const e = document.querySelector("meta[property='og:type']")
+        if (e && e.content === 'video.movie') {
+          return true
+        } else if(document.querySelector('div[data-testid="hero-title-block__title"]') && !document.querySelector('div[data-testid="hero-subnav-bar-left-block"] a[href*="episodes/"]')) {
+          // New design 2020-12
+          return true
         }
-        return false;
+        return false
       },
       type : "movie",
       data : function() {
         var year = null;
         var name = null;
         var jsonld = null;
+        if(document.querySelector('div[data-testid="hero-title-block__title"]')) {
+          // New design 2020-12
+          let m = document.title.match(/\s+\((\d{4})\)/);
+          if(m) {
+            year = parseInt(m[1]);
+          }
+          return [document.querySelector('div[data-testid="hero-title-block__title"]').textContent, year]
+        }
         if(document.querySelector("#titleYear")) {
           year = parseInt(document.querySelector("#titleYear a").firstChild.textContent);
         }
@@ -439,17 +450,27 @@ var sites = {
       }
     },
     {
-      condition : function() {
-        var e = document.querySelector("meta[property='og:type']");
-        if(e) {
-          return e.content == "video.tv_show"
+      condition: function () {
+        const e = document.querySelector("meta[property='og:type']")
+        if (e && e.content === 'video.tv_show') {
+          return true
+        } else if(document.querySelector('div[data-testid="hero-subnav-bar-left-block"] a[href*="episodes/"]')) {
+          // New design 2020-12
+          return true
         }
-        return false;
+        return false
       },
       type : "tv",
       data : function() {
         var year = null;
-        if(document.querySelector("*[itemprop=name]")) {
+        if (document.querySelector('div[data-testid="hero-title-block__title"]')) {
+          // New design 2020-12
+          let m = document.title.match(/\s(\d{4})(\S\d{4}?)?/);
+          if(m) {
+            year = parseInt(m[1]);
+          }
+          return [document.querySelector('div[data-testid="hero-title-block__title"]').textContent, year]
+        } else if(document.querySelector("*[itemprop=name]")) {
           var m = document.title.match(/\s(\d{4})(\S\d{4}?)?/);
           if(m) {
             year = parseInt(m[1]);
