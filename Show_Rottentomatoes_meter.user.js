@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     21
+// @version     22
 // @connect     www.rottentomatoes.com
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -48,7 +48,7 @@
 // @include     http://www.allmovie.com/movie/*
 // @include     https://www.allmovie.com/movie/*
 // @include     https://en.wikipedia.org/*
-// @include     http://www.movies.com/*/m*
+// @include     https://www.fandango.com/*
 // @include     https://www.themoviedb.org/movie/*
 // @include     https://www.themoviedb.org/tv/*
 // @include     http://letterboxd.com/film/*
@@ -60,11 +60,8 @@
 // @include     https://www.tvguide.com/tvshows/*
 // @include     http://followshows.com/show/*
 // @include     https://followshows.com/show/*
-// @include     http://thetvdb.com/*tab=series*
-// @include     https://thetvdb.com/*tab=series*
-// @include     http://www.thetvdb.com/*tab=series*
-// @include     https://www.thetvdb.com/*tab=series*
-// @include     https://www.thetvdb.com/series/*
+// @include     https://thetvdb.com/series/*
+// @include     https://thetvdb.com/movies/*
 // @include     http://tvnfo.com/s/*
 // @include     https://tvnfo.com/s/*
 // @include     http://www.metacritic.com/movie/*
@@ -629,13 +626,13 @@ var sites = {
       data : () => document.querySelector(".infobox .summary").firstChild.data
     }]
   },
-  'movies.com' : {
-    host : ["movies.com"],
-    condition : () => document.querySelector("meta[property='og:title']"),
-    products : [{
-      condition : Always,
-      type : "movie",
-      data : () => document.querySelector("meta[property='og:title']").content
+  fandango: {
+    host: ['fandango.com'],
+    condition: () => document.querySelector("meta[property='og:title']"),
+    products: [{
+      condition: Always,
+      type: 'movie',
+      data: () => document.querySelector("meta[property='og:title']").content.match(/(.+?)\s+\(\d{4}\)/)[1].trim()
     }]
   },
   'themoviedb' : {
@@ -701,22 +698,37 @@ var sites = {
       data : () => document.querySelector("meta[property='og:title']").content
     }]
   },
-  'TheTVDB' : {
-    host : ["thetvdb.com"],
-    condition : Always,
-    products : [{
-      condition : () => document.location.pathname.startsWith("/series/") || ~document.location.search.indexOf("tab=series"),
-      type : "tv",
-      data : () => document.getElementById("series_title").firstChild.data.trim()
+  TheTVDB: {
+    host: ['thetvdb.com'],
+    condition: Always,
+    products: [{
+      condition: () => document.location.pathname.startsWith('/series/'),
+      type: 'tv',
+      data: () => document.getElementById('series_title').firstChild.data.trim()
+    },
+    {
+      condition: () => document.location.pathname.startsWith('/movies/'),
+      type: 'movie',
+      data: () => document.getElementById('series_title').firstChild.data.trim()
     }]
   },
-  'TVNfo' : {
-    host : ["tvnfo.com"],
-    condition : () => document.querySelector("#tvsign"),
-    products : [{
-      condition : Always,
-      type : "tv",
-      data : () => document.querySelector(".heading h1").textContent.trim()
+  TVNfo: {
+    host: ['tvnfo.com'],
+    condition: () => document.querySelector('.ui.breadcrumb a[href*="/series"]'),
+    products: [{
+      condition: Always,
+      type: 'tv',
+      data: function() {
+        const years = document.querySelector('#title h1 .years').textContent.trim()
+        const title = document.querySelector('#title h1').textContent.replace(years, '').trim()
+        let year = null
+        if (years) {
+          try {
+            year = years.match(/\d{4}/)[0]
+          } catch(e) {}
+        }
+        return [title, year]
+      }
     }]
   },
   'nme' : {
@@ -784,6 +796,11 @@ var sites = {
       condition : () => document.location.pathname.split("/").length === 3 && document.querySelector("meta[property='og:title']"),
       type : 'tv',
       data : () => document.querySelector("meta[property='og:title']").content
+    },
+    {
+      condition: () => document.location.pathname.split('/').length === 3 && document.title.match(/(.+?)\s+-\s+Series/),
+      type: 'tv',
+      data: () => document.title.match(/(.+?)\s+-\s+Series/)[1]
     }]
   },
   'TVHoard' : {
@@ -800,16 +817,16 @@ var sites = {
       data : () => document.querySelector('app-root title-page-container h1.title a').textContent.trim()
     }]
   },
-  'AMC' : {
-    host : ['amc.com'],
-    condition : () => document.location.pathname.startsWith("/shows/"),
-    products : [
-    {
-      condition : () => document.location.pathname.split("/").length === 3 && document.querySelector("meta[property='og:type']") && document.querySelector("meta[property='og:type']").content == 'tv_show',
-      type : 'tv',
-      data : () => document.querySelector("meta[property='og:title']").content
-    }]
-  },
+  AMC: {
+    host: ['amc.com'],
+    condition: () => document.location.pathname.startsWith('/shows/'),
+    products: [
+      {
+        condition: () => document.location.pathname.split('/').length === 3 && document.querySelector("meta[property='og:type']") && document.querySelector("meta[property='og:type']").content.indexOf('tv_show') !== -1,
+        type: 'tv',
+        data: () => document.querySelector('.video-card-description h1').textContent.trim()
+      }]
+  }
 };
 
 

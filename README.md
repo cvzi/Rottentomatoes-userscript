@@ -28,7 +28,7 @@ Supported sites and products:
  * allmovie.com
  * Wikipedia
  * themoviedb.org
- * movies.com
+ * fandango.com
  * tvmaze.com
  * tvguide.com
  * followshows.com
