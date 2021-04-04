@@ -3,14 +3,12 @@ Rottentomatoes-userscript
 A userscript or greasemonkey script that shows the score/meter from rottentomatoes.com on several other websites like amazon, google play and others.
 
 It's primarily designed for Firefox and Chrome with
-[Greasemonkey ![Firefox logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/firefox16.png)](https://addons.mozilla.org/firefox/addon/greasemonkey/)
-,
 [Tampermonkey](https://www.tampermonkey.net/) [![Chrome logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/chrome16.png)](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) [![Firefox logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/firefox16.png)](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
 or
 [FireMonkey ![Firefox logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/firefox16.png)](https://addons.mozilla.org/en-US/firefox/addon/firemonkey/).
 
 [**Click here for install**](https://openuserjs.org/install/cuzi/Show_Rottentomatoes_meter.user.js)  
-Tested with Firefox/**Greasemonkey 4** and Chrome/**Tampermonkey**.
+Tested with Firefox/**Tampermonkey** and Chrome/**Tampermonkey**.
 
 I develop a similar script for the [Metacritic](https://www.metacritic.com/) score, see [cvzi/Metacritic-userscript](https://github.com/cvzi/Metacritic-userscript/)  
 and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterboxd-userscript](https://github.com/cvzi/Letterboxd-userscript/)
