@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     23
+// @version     24
 // @connect     www.rottentomatoes.com
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -77,7 +77,9 @@
 // @include     http://www.cc.com/*
 // @include     https://www.tvhoard.com/*
 // @include     https://www.amc.com/*
-// @include     http://rlsbb.ru/*/
+// @include     https://www.amcplus.com/*
+// @include     https://rlsbb.ru/*/
+// @include     https://www.sho.com/*
 // ==/UserScript==
 
 /* global GM, $, unsafeWindow */
@@ -818,19 +820,44 @@ const sites = {
         data: () => document.querySelector('.video-card-description h1').textContent.trim()
       }]
   },
+  AMCplus: {
+    host: ['amcplus.com'],
+    condition: () => Always,
+    products: [
+      {
+        condition: () => document.title.match(/Watch .+? |/),
+        type: 'tv',
+        data: () => document.title.match(/Watch (.+?) |/)[1].trim()
+      }]
+  },
   RlsBB: {
     host: ['rlsbb.ru'],
     condition: () => document.querySelectorAll('.post').length === 1,
     products: [
       {
-        condition: () => document.querySelector('.post .postSubTitle a[href*="/category/movies/"]'),
+        condition: () => document.querySelector('#post-wrapper .entry-meta a[href*="/category/movies/"]'),
         type: 'movie',
-        data: () => document.querySelector('h1.postTitle').textContent.match(/(.+?)\s+\d{4}/)[1].trim()
+        data: () => document.querySelector('h1.entry-title').textContent.match(/(.+?)\s+\d{4}/)[1].trim()
       },
       {
-        condition: () => document.querySelector('.post .postSubTitle a[href*="/category/tv-shows/"]'),
+        condition: () => document.querySelector('#post-wrapper .entry-meta a[href*="/category/tv-shows/"]'),
         type: 'tv',
-        data: () => document.querySelector('h1.postTitle').textContent.match(/(.+?)\s+S\d{2}/)[1].trim()
+        data: () => document.querySelector('h1.entry-title').textContent.match(/(.+?)\s+S\d{2}/)[1].trim()
+      }]
+  },
+  showtime: {
+    host: ['sho.com'],
+    condition: Always,
+    products: [
+      {
+        condition: () => parseLDJSON('@type') === 'Movie',
+        type: 'movie',
+        data: () => parseLDJSON('name', (j) => (j['@type'] === 'Movie'))
+      },
+      {
+        condition: () => parseLDJSON('@type') === 'TVSeries',
+        type: 'tv',
+        data: () => parseLDJSON('name', (j) => (j['@type'] === 'TVSeries'))
       }]
   }
 }
