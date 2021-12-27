@@ -7,7 +7,7 @@ It's primarily designed for Firefox and Chrome with
 or
 [FireMonkey ![Firefox logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/firefox16.png)](https://addons.mozilla.org/en-US/firefox/addon/firemonkey/).
 
-[**Click here for install**](https://openuserjs.org/install/cuzi/Show_Rottentomatoes_meter.user.js)  
+[**Click here for install**](https://greasyfork.org/scripts/35443-show-rottentomatoes-meter/code/Show%20Rottentomatoes%20meter.user.js)  
 Tested with Firefox/**Tampermonkey** and Chrome/**Tampermonkey**.
 
 I develop a similar script for the [Metacritic](https://www.metacritic.com/) score, see [cvzi/Metacritic-userscript](https://github.com/cvzi/Metacritic-userscript/)  
