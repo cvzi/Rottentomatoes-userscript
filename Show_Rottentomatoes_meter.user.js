@@ -10,9 +10,9 @@
 // @grant       GM.xmlHttpRequest
 // @grant       GM.setValue
 // @grant       GM.getValue
-// @require     http://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js
+// @require     http://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     24
+// @version     25
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @include     https://www.rottentomatoes.com/
@@ -153,7 +153,7 @@ function parseLDJSON (keys, condition) {
   return null
 }
 
-function updateAlgolia (){
+function updateAlgolia () {
   // Get algolia data from https://www.rottentomatoes.com/
   const algoliaSearch = { aId: null, sId: null }
   if (RottenTomatoes && 'thirdParty' in RottenTomatoes && 'algoliaSearch' in RottenTomatoes.thirdParty) {
