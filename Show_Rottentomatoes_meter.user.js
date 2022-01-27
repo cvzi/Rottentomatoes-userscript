@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     25
+// @version     26
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
