@@ -15,6 +15,7 @@
 // @version     25
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
+// @connect     www.flixster.com
 // @include     https://www.rottentomatoes.com/
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
@@ -87,37 +88,49 @@
 /* global GM, $, unsafeWindow, RottenTomatoes */
 
 const baseURL = 'https://www.rottentomatoes.com'
-const baseURL_search = baseURL + '/api/private/v2.0/search/?limit=100&q={query}&t={type}'
-const baseURL_openTab = baseURL + '/search/?search={query}'
+const baseURLSearch = baseURL + '/api/private/v2.0/search/?limit=100&q={query}&t={type}'
+const baseURLOpenTab = baseURL + '/search/?search={query}'
+const algoliaURL = 'https://{domain}-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent={agent}&x-algolia-api-key={sId}&x-algolia-application-id={aId}'
+const algoliaAgent = 'Algolia for JavaScript (4.12.0); Browser (lite)'
+const flixsterEMSURL = 'https://www.flixster.com/api/ems/v2/emsId/{emsId}'
 const cacheExpireAfterHours = 4
-const emoji_tomato = String.fromCodePoint(0x1F345)
-const emoji_green_apple = String.fromCodePoint(0x1F34F)
-const emoji_strawberry = String.fromCodePoint(0x1F353)
+const emojiTomato = String.fromCodePoint(0x1F345)
+const emojiGreenApple = String.fromCodePoint(0x1F34F)
+const emojiStrawberry = String.fromCodePoint(0x1F353)
 
-const emoji_popcorn = '\uD83C\uDF7F'
-const emoji_green_salad = '\uD83E\uDD57'
-const emoji_nauseated = '\uD83E\uDD22'
+const emojiPopcorn = '\uD83C\uDF7F'
+const emojiGreenSalad = '\uD83E\uDD57'
+const emojiNauseated = '\uD83E\uDD22'
 
 function minutesSince (time) {
   const seconds = ((new Date()).getTime() - time.getTime()) / 1000
   return seconds > 60 ? parseInt(seconds / 60) + ' min ago' : 'now'
 }
-
-const parseLDJSON_cache = {}
+function intersection (setA, setB) {
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
+  const _intersection = new Set()
+  for (const elem of setB) {
+    if (setA.has(elem)) {
+      _intersection.add(elem)
+    }
+  }
+  return _intersection
+}
+const parseLDJSONCache = {}
 function parseLDJSON (keys, condition) {
   if (document.querySelector('script[type="application/ld+json"]')) {
     const data = []
     const scripts = document.querySelectorAll('script[type="application/ld+json"]')
     for (let i = 0; i < scripts.length; i++) {
       let jsonld
-      if (scripts[i].innerText in parseLDJSON_cache) {
-        jsonld = parseLDJSON_cache[scripts[i].innerText]
+      if (scripts[i].innerText in parseLDJSONCache) {
+        jsonld = parseLDJSONCache[scripts[i].innerText]
       } else {
         try {
           jsonld = JSON.parse(scripts[i].innerText)
-          parseLDJSON_cache[scripts[i].innerText] = jsonld
+          parseLDJSONCache[scripts[i].innerText] = jsonld
         } catch (e) {
-          parseLDJSON_cache[scripts[i].innerText] = null
+          parseLDJSONCache[scripts[i].innerText] = null
           continue
         }
       }
@@ -153,6 +166,70 @@ function parseLDJSON (keys, condition) {
   return null
 }
 
+function askFlixsterEMS (emsId) {
+  return new Promise(function flixsterEMSRequest (resolve) {
+    GM.getValue('flixsterEmsCache', '{}').then(function (s) {
+      const flixsterEmsCache = JSON.parse(s)
+
+      // Delete algoliaCached values, that are expired
+      for (const prop in flixsterEmsCache) {
+        if ((new Date()).getTime() - (new Date(flixsterEmsCache[prop].time)).getTime() > cacheExpireAfterHours * 60 * 60 * 1000) {
+          delete flixsterEmsCache[prop]
+        }
+      }
+
+      // Check cache or request new content
+      if (emsId in flixsterEmsCache) {
+        return resolve(flixsterEmsCache[emsId])
+      }
+      const url = flixsterEMSURL.replace('{emsId}', encodeURIComponent(emsId))
+      GM.xmlHttpRequest({
+        method: 'GET',
+        url: url,
+        onload: function (response) {
+          let data = null
+          try {
+            data = JSON.parse(response.responseText)
+          } catch (e) {
+            console.error('Rottentomatoes flixster ems JSON Error\nURL: ' + url)
+            console.error(e)
+            data = {}
+          }
+
+          // Save to flixsterEmsCache
+          data.time = (new Date()).toJSON()
+
+          flixsterEmsCache[emsId] = data
+
+          GM.setValue('flixsterEmsCache', JSON.stringify(flixsterEmsCache))
+
+          resolve(data)
+        },
+        onerror: function (response) {
+          console.error('Rottentomatoes flixster ems GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+          resolve(null)
+        }
+      })
+    })
+  })
+}
+async function addFlixsterEMS (orgData) {
+  const flixsterData = await askFlixsterEMS(orgData.emsId)
+  if (!flixsterData || !('tomatometer' in flixsterData)) {
+    return orgData
+  }
+  if ('certifiedFresh' in flixsterData.tomatometer && flixsterData.tomatometer.certifiedFresh) {
+    orgData.meterClass = 'certified_fresh'
+  }
+  if ('numReviews' in flixsterData.tomatometer && flixsterData.tomatometer.numReviews) {
+    orgData.numReviews = flixsterData.tomatometer.numReviews
+  }
+  if ('consensus' in flixsterData.tomatometer && flixsterData.tomatometer.consensus) {
+    orgData.consensus = flixsterData.tomatometer.consensus
+  }
+  return orgData
+}
+
 function updateAlgolia () {
   // Get algolia data from https://www.rottentomatoes.com/
   const algoliaSearch = { aId: null, sId: null }
@@ -180,21 +257,21 @@ function meterBar (data) {
   if (data.meterClass === 'certified_fresh') {
     barColor = '#C91B22'
     color = 'yellow'
-    textInside = emoji_strawberry + ' ' + data.meterScore + '%'
+    textInside = emojiStrawberry + ' ' + data.meterScore + '%'
     width = data.meterScore
   } else if (data.meterClass === 'fresh') {
     barColor = '#C91B22'
     color = 'white'
-    textInside = emoji_tomato + ' ' + data.meterScore + '%'
+    textInside = emojiTomato + ' ' + data.meterScore + '%'
     width = data.meterScore
   } else if (data.meterClass === 'rotten') {
     color = 'gray'
     barColor = '#94B13C'
     if (data.meterScore > 30) {
       textAfter = data.meterScore + '% '
-      textInside = '<span style="font-size:13px">' + emoji_green_apple + '</span>'
+      textInside = '<span style="font-size:13px">' + emojiGreenApple + '</span>'
     } else {
-      textAfter = data.meterScore + '% <span style="font-size:13px">' + emoji_green_apple + '</span>'
+      textAfter = data.meterScore + '% <span style="font-size:13px">' + emojiGreenApple + '</span>'
     }
     width = data.meterScore
   } else {
@@ -204,8 +281,17 @@ function meterBar (data) {
     width = 100
   }
 
-  return '<div title="Critics ' + data.meterScore + '% ' + data.meterClass + '" style="cursor:pointer; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
-    '<div style="width:' + data.meterScore + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
+  let title = 'Critics ' + data.meterScore + '% ' + data.meterClass
+  if ('numReviews' in data) {
+    title += ' ' + data.numReviews + ' reviews'
+  }
+  if ('consensus' in data) {
+    const node = document.createElement('span')
+    node.innerHTML = data.consensus
+    title += '\n' + node.textContent
+  }
+  return '<div title="' + title + '" style="cursor:help; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+    '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
 }
 function audienceBar (data) {
   // Create the "progress" bar with the audience score
@@ -223,16 +309,16 @@ function audienceBar (data) {
   if (data.audienceClass === 'red_popcorn') {
     barColor = '#C91B22'
     color = data.audienceScore > 94 ? 'yellow' : 'white'
-    textInside = emoji_popcorn + ' ' + data.audienceScore + '%'
+    textInside = emojiPopcorn + ' ' + data.audienceScore + '%'
     width = data.audienceScore
   } else if (data.audienceClass === 'green_popcorn') {
     color = 'gray'
     barColor = '#94B13C'
     if (data.audienceScore > 30) {
       textAfter = data.audienceScore + '% '
-      textInside = '<span style="font-size:13px">' + emoji_green_salad + '</span>'
+      textInside = '<span style="font-size:13px">' + emojiGreenSalad + '</span>'
     } else {
-      textAfter = data.audienceScore + '% <span style="font-size:13px">' + emoji_nauseated + '</span>'
+      textAfter = data.audienceScore + '% <span style="font-size:13px">' + emojiNauseated + '</span>'
     }
     width = data.audienceScore
   } else {
@@ -242,8 +328,10 @@ function audienceBar (data) {
     width = 100
   }
 
-  return '<div title="Audience ' + data.audienceScore + '% ' + data.audienceClass + '" style="cursor:pointer; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
-    '<div style="width:' + data.audienceScore + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
+  const title = 'Audience ' + data.audienceScore + '% ' + data.audienceClass
+
+  return '<div title="' + title + '" style="cursor:help; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+    '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
 }
 
 const current = {
@@ -261,7 +349,7 @@ async function loadMeter (query, type, year) {
 
   const rottenType = type === 'movie' ? 'movie' : 'tvSeries'
 
-  const url = baseURL_search.replace('{query}', encodeURIComponent(query)).replace('{type}', encodeURIComponent(rottenType))
+  const url = baseURLSearch.replace('{query}', encodeURIComponent(query)).replace('{type}', encodeURIComponent(rottenType))
 
   const cache = JSON.parse(await GM.getValue('cache', '{}'))
 
@@ -282,7 +370,7 @@ async function loadMeter (query, type, year) {
   }
 
   const algoliaSearch = JSON.parse(await GM.getValue('algoliaSearch', '{}'))
-  console.log(algoliaSearch)
+
   // Check cache or request new content
   if (query in algoliaCache) {
     // Use cached response
@@ -290,10 +378,10 @@ async function loadMeter (query, type, year) {
     handleAlgoliaResponse(algoliaCache[query])
   } else if ('aId' in algoliaSearch && 'sId' in algoliaSearch) {
     // Use algolia.net API
-    console.debug('Use algolia.net API')
+    const url = algoliaURL.replace('{domain}', algoliaSearch.aId.toLowerCase()).replace('{aId}', encodeURIComponent(algoliaSearch.aId)).replace('{sId}', encodeURIComponent(algoliaSearch.sId)).replace('{agent}', encodeURIComponent(algoliaAgent))
     GM.xmlHttpRequest({
       method: 'POST',
-      url: `https://${algoliaSearch.aId.toLowerCase()}-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for%20JavaScript%20(4.12.0)%3B%20Browser%20(lite)&x-algolia-api-key=${algoliaSearch.sId}&x-algolia-application-id=${algoliaSearch.aId}`,
+      url: url,
       data: '{"requests":[{"indexName":"content_rt","query":"' + query.replace('"', '') + '","params":"filters=rtId%20%3E%200%20AND%20isEmsSearchable%20%3D%201&hitsPerPage=20"}]}',
       onload: function (response) {
         // Save to algoliaCache
@@ -310,11 +398,10 @@ async function loadMeter (query, type, year) {
 
         GM.setValue('algoliaCache', JSON.stringify(algoliaCache))
 
-        console.log(response)
         handleAlgoliaResponse(response)
       },
       onerror: function (response) {
-        console.log('Rottentomatoes algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+        console.error('Rottentomatoes algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
       }
     })
   } else if (url in cache) {
@@ -345,10 +432,55 @@ async function loadMeter (query, type, year) {
         handleResponse(response)
       },
       onerror: function (response) {
-        console.log('Rottentomatoes legacy API GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+        console.error('Rottentomatoes legacy API GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
       }
     })
   }
+}
+
+function matchQuality (title, year, currentSet) {
+  if (title === current.query && year === current.year) {
+    return 104 + year
+  }
+  if (title.toLowerCase() === current.query.toLowerCase() && year === current.year) {
+    return 103 + year
+  }
+  if (title === current.query && current.year) {
+    return 102 - Math.abs(year - current.year)
+  }
+  if (title.toLowerCase() === current.query.toLowerCase() && current.year) {
+    return 101 - Math.abs(year - current.year)
+  }
+  if (title.replace(/\(.+\)/, '').trim() === current.query && current.year) {
+    return 100 - Math.abs(year - current.year)
+  }
+  if (title === current.query) {
+    return 8
+  }
+  if (title.replace(/\(.+\)/, '').trim() === current.query) {
+    return 7
+  }
+  if (title.startsWith(current.query)) {
+    return 6
+  }
+  if (current.query.indexOf(title) !== -1) {
+    return 5
+  }
+  if (title.indexOf(current.query) !== -1) {
+    return 4
+  }
+  if (current.query.toLowerCase().indexOf(title.toLowerCase()) !== -1) {
+    return 3
+  }
+  if (title.toLowerCase().indexOf(current.query.toLowerCase()) !== -1) {
+    return 2
+  }
+  const titleSet = new Set(title.replace(/[^a-z ]/gi, ' ').split(' '))
+  const score = intersection(titleSet, currentSet).size - 20
+  if (year === current.year) {
+    return score + 1
+  }
+  return score
 }
 
 function handleResponse (response) {
@@ -371,46 +503,13 @@ function handleResponse (response) {
 
   if (data[prop] && data[prop].length) {
     // Sort results by closest match
-    function matchQuality (title, year) {
-      if (title === current.query && year === current.year) {
-        return 102 + year
-      }
-      if (title === current.query && current.year) {
-        return 101 - Math.abs(year - current.year)
-      }
-      if (title.replace(/\(.+\)/, '').trim() === current.query && current.year) {
-        return 100 - Math.abs(year - current.year)
-      }
-      if (title === current.query) {
-        return 7
-      }
-      if (title.replace(/\(.+\)/, '').trim() === current.query) {
-        return 6
-      }
-      if (title.startsWith(current.query)) {
-        return 5
-      }
-      if (current.query.indexOf(title) !== -1) {
-        return 4
-      }
-      if (title.indexOf(current.query) !== -1) {
-        return 3
-      }
-      if (current.query.toLowerCase().indexOf(title.toLowerCase()) !== -1) {
-        return 2
-      }
-      if (title.toLowerCase().indexOf(current.query.toLowerCase()) !== -1) {
-        return 1
-      }
-      return 0
-    }
-
+    const currentSet = new Set(current.query.replace(/[^a-z ]/gi, ' ').split(' '))
     data[prop].sort(function (a, b) {
-      if (!a.hasOwnProperty('matchQuality')) {
-        a.matchQuality = matchQuality(a.name, a.year)
+      if (!Object.prototype.hasOwnProperty.call(a, 'matchQuality')) {
+        a.matchQuality = matchQuality(a.name, a.year, currentSet)
       }
-      if (!b.hasOwnProperty('matchQuality')) {
-        b.matchQuality = matchQuality(b.name, b.year)
+      if (!Object.prototype.hasOwnProperty.call(b, 'matchQuality')) {
+        b.matchQuality = matchQuality(b.name, b.year, currentSet)
       }
 
       return b.matchQuality - a.matchQuality
@@ -418,11 +517,11 @@ function handleResponse (response) {
     data[prop][0].legacy = 1
     showMeter(data[prop], new Date(response.time))
   } else {
-    console.log('Rottentomatoes: No results for ' + current.query)
+    console.debug('Rottentomatoes: No results for ' + current.query)
   }
 }
 
-function handleAlgoliaResponse (response) {
+async function handleAlgoliaResponse (response) {
   // Handle GM.xmlHttpRequest response
   const rawData = JSON.parse(response.responseText)
 
@@ -440,7 +539,8 @@ function handleAlgoliaResponse (response) {
       meterClass: null,
       meterScore: null,
       audienceClass: null,
-      audienceScore: null
+      audienceScore: null,
+      emsId: hit.emsId
     }
     if ('rottenTomatoes' in hit) {
       if ('criticsIconUrl' in hit.rottenTomatoes) {
@@ -461,56 +561,29 @@ function handleAlgoliaResponse (response) {
     }
     arr.push(result)
   })
-  if (arr && arr.length) {
-    // Sort results by closest match
-    function matchQuality (title, year) {
-      if (title === current.query && year === current.year) {
-        return 102 + year
-      }
-      if (title === current.query && current.year) {
-        return 101 - Math.abs(year - current.year)
-      }
-      if (title.replace(/\(.+\)/, '').trim() === current.query && current.year) {
-        return 100 - Math.abs(year - current.year)
-      }
-      if (title === current.query) {
-        return 7
-      }
-      if (title.replace(/\(.+\)/, '').trim() === current.query) {
-        return 6
-      }
-      if (title.startsWith(current.query)) {
-        return 5
-      }
-      if (current.query.indexOf(title) !== -1) {
-        return 4
-      }
-      if (title.indexOf(current.query) !== -1) {
-        return 3
-      }
-      if (current.query.toLowerCase().indexOf(title.toLowerCase()) !== -1) {
-        return 2
-      }
-      if (title.toLowerCase().indexOf(current.query.toLowerCase()) !== -1) {
-        return 1
-      }
-      return 0
+
+  // Sort results by closest match
+  const currentSet = new Set(current.query.replace(/[^a-z ]/gi, ' ').split(' '))
+  arr.sort(function (a, b) {
+    if (!Object.prototype.hasOwnProperty.call(a, 'matchQuality')) {
+      a.matchQuality = matchQuality(a.name, a.year, currentSet)
+    }
+    if (!Object.prototype.hasOwnProperty.call(b, 'matchQuality')) {
+      b.matchQuality = matchQuality(b.name, b.year, currentSet)
     }
 
-    arr.sort(function (a, b) {
-      if (!a.hasOwnProperty('matchQuality')) {
-        a.matchQuality = matchQuality(a.name, a.year)
-      }
-      if (!b.hasOwnProperty('matchQuality')) {
-        b.matchQuality = matchQuality(b.name, b.year)
-      }
+    return b.matchQuality - a.matchQuality
+  })
 
-      return b.matchQuality - a.matchQuality
-    })
+  if (arr.length > 0 && arr[0].meterScore && arr[0].meterScore >= 70 && arr[0].meterClass !== 'certified_fresh') {
+    // Get more details for first result
+    arr[0] = await addFlixsterEMS(arr[0])
+  }
 
+  if (arr) {
     showMeter(arr, new Date(response.time))
   } else {
-    console.log('Rottentomatoes: No results for ' + current.query)
+    console.debug('Rottentomatoes: No results for ' + current.query)
   }
 }
 
@@ -558,7 +631,7 @@ function showMeter (arr, time) {
   // Footer
   const sub = $('<div></div>').appendTo(main)
   $('<time style="color:#b6b6b6; font-size: 11px;" datetime="' + time + '" title="' + time.toLocaleTimeString() + ' ' + time.toLocaleDateString() + '">' + minutesSince(time) + '</time>').appendTo(sub)
-  $('<a style="color:#b6b6b6; font-size: 11px;" target="_blank" href="' + baseURL_openTab.replace('{query}', encodeURIComponent(current.query)) + '" title="Open Rotten Tomatoes">@rottentomatoes.com</a>').appendTo(sub)
+  $('<a style="color:#b6b6b6; font-size: 11px;" target="_blank" href="' + baseURLOpenTab.replace('{query}', encodeURIComponent(current.query)) + '" title="Open Rotten Tomatoes">@rottentomatoes.com</a>').appendTo(sub)
   $('<span title="Hide me" style="cursor:pointer; float:right; color:#b6b6b6; font-size: 11px; padding-left:5px;padding-top:3px">&#10062;</span>').appendTo(sub).click(function () {
     document.body.removeChild(this.parentNode.parentNode)
   })
