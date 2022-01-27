@@ -409,7 +409,7 @@ async function loadMeter (query, type, year) {
     console.debug('Use cached legacy response')
     handleResponse(cache[url])
   } else {
-    console.debug('algoliaSearch not configured, falling back to legacy API' + url)
+    console.debug('algoliaSearch not configured, falling back to legacy API: ' + url)
     GM.xmlHttpRequest({
       method: 'GET',
       url: url,
