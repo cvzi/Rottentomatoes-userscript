@@ -14,6 +14,8 @@
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @version     24
 // @connect     www.rottentomatoes.com
+// @connect     algolia.net
+// @include     https://www.rottentomatoes.com/
 // @include     https://play.google.com/store/movies/details/*
 // @include     http://www.amazon.com/*
 // @include     https://www.amazon.com/*
@@ -82,15 +84,19 @@
 // @include     https://www.sho.com/*
 // ==/UserScript==
 
-/* global GM, $, unsafeWindow */
+/* global GM, $, unsafeWindow, RottenTomatoes */
 
 const baseURL = 'https://www.rottentomatoes.com'
 const baseURL_search = baseURL + '/api/private/v2.0/search/?limit=100&q={query}&t={type}'
 const baseURL_openTab = baseURL + '/search/?search={query}'
 const cacheExpireAfterHours = 4
-const emoji_tomato = 0x1F345
-const emoji_green_apple = 0x1F34F
-const emoji_strawberry = 0x1F353
+const emoji_tomato = String.fromCodePoint(0x1F345)
+const emoji_green_apple = String.fromCodePoint(0x1F34F)
+const emoji_strawberry = String.fromCodePoint(0x1F353)
+
+const emoji_popcorn = '\uD83C\uDF7F'
+const emoji_green_salad = '\uD83E\uDD57'
+const emoji_nauseated = '\uD83E\uDD22'
 
 function minutesSince (time) {
   const seconds = ((new Date()).getTime() - time.getTime()) / 1000
@@ -147,6 +153,21 @@ function parseLDJSON (keys, condition) {
   return null
 }
 
+function updateAlgolia (){
+  // Get algolia data from https://www.rottentomatoes.com/
+  const algoliaSearch = { aId: null, sId: null }
+  if (RottenTomatoes && 'thirdParty' in RottenTomatoes && 'algoliaSearch' in RottenTomatoes.thirdParty) {
+    if (typeof (RottenTomatoes.thirdParty.algoliaSearch.aId) === 'string' && typeof (RottenTomatoes.thirdParty.algoliaSearch.sId) === 'string') {
+      algoliaSearch.aId = RottenTomatoes.thirdParty.algoliaSearch.aId // x-algolia-application-id
+      algoliaSearch.sId = RottenTomatoes.thirdParty.algoliaSearch.sId // x-algolia-api-key
+    }
+  }
+  // Always store even if null to hide the "You need to visit www.rottentomatoes.com at least once to enable audience score" warning
+  GM.setValue('algoliaSearch', JSON.stringify(algoliaSearch)).then(function () {
+    console.debug('Updated algoliaSearch: ' + JSON.stringify(algoliaSearch))
+  })
+}
+
 function meterBar (data) {
   // Create the "progress" bar with the meter score
   let barColor = 'grey'
@@ -159,21 +180,21 @@ function meterBar (data) {
   if (data.meterClass === 'certified_fresh') {
     barColor = '#C91B22'
     color = 'yellow'
-    textInside = String.fromCodePoint(emoji_strawberry) + ' ' + data.meterScore + '%'
+    textInside = emoji_strawberry + ' ' + data.meterScore + '%'
     width = data.meterScore
   } else if (data.meterClass === 'fresh') {
     barColor = '#C91B22'
     color = 'white'
-    textInside = String.fromCodePoint(emoji_tomato) + ' ' + data.meterScore + '%'
+    textInside = emoji_tomato + ' ' + data.meterScore + '%'
     width = data.meterScore
   } else if (data.meterClass === 'rotten') {
     color = 'gray'
     barColor = '#94B13C'
     if (data.meterScore > 30) {
       textAfter = data.meterScore + '% '
-      textInside = '<span style="font-size:13px">' + String.fromCodePoint(emoji_green_apple) + '</span>'
+      textInside = '<span style="font-size:13px">' + emoji_green_apple + '</span>'
     } else {
-      textAfter = data.meterScore + '% <span style="font-size:13px">' + String.fromCodePoint(emoji_green_apple) + '</span>'
+      textAfter = data.meterScore + '% <span style="font-size:13px">' + emoji_green_apple + '</span>'
     }
     width = data.meterScore
   } else {
@@ -183,8 +204,46 @@ function meterBar (data) {
     width = 100
   }
 
-  return '<div style="width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+  return '<div title="Critics ' + data.meterScore + '% ' + data.meterClass + '" style="cursor:pointer; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
     '<div style="width:' + data.meterScore + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
+}
+function audienceBar (data) {
+  // Create the "progress" bar with the audience score
+  if (!('audienceScore' in data) || data.audienceScore === null) {
+    return ''
+  }
+
+  let barColor = 'grey'
+  let bgColor = '#ECE4B5'
+  let color = 'black'
+  let width = 0
+  let textInside = ''
+  let textAfter = ''
+
+  if (data.audienceClass === 'red_popcorn') {
+    barColor = '#C91B22'
+    color = data.audienceScore > 94 ? 'yellow' : 'white'
+    textInside = emoji_popcorn + ' ' + data.audienceScore + '%'
+    width = data.audienceScore
+  } else if (data.audienceClass === 'green_popcorn') {
+    color = 'gray'
+    barColor = '#94B13C'
+    if (data.audienceScore > 30) {
+      textAfter = data.audienceScore + '% '
+      textInside = '<span style="font-size:13px">' + emoji_green_salad + '</span>'
+    } else {
+      textAfter = data.audienceScore + '% <span style="font-size:13px">' + emoji_nauseated + '</span>'
+    }
+    width = data.audienceScore
+  } else {
+    bgColor = barColor = '#787878'
+    color = 'silver'
+    textInside = 'N/A'
+    width = 100
+  }
+
+  return '<div title="Audience ' + data.audienceScore + '% ' + data.audienceClass + '" style="cursor:pointer; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+    '<div style="width:' + data.audienceScore + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
 }
 
 const current = {
@@ -213,16 +272,62 @@ async function loadMeter (query, type, year) {
     }
   }
 
+  const algoliaCache = JSON.parse(await GM.getValue('algoliaCache', '{}'))
+
+  // Delete algoliaCached values, that are expired
+  for (const prop in algoliaCache) {
+    if ((new Date()).getTime() - (new Date(algoliaCache[prop].time)).getTime() > cacheExpireAfterHours * 60 * 60 * 1000) {
+      delete algoliaCache[prop]
+    }
+  }
+
+  const algoliaSearch = JSON.parse(await GM.getValue('algoliaSearch', '{}'))
+  console.log(algoliaSearch)
   // Check cache or request new content
-  if (url in cache) {
+  if (query in algoliaCache) {
     // Use cached response
+    console.debug('Use cached algolia response')
+    handleAlgoliaResponse(algoliaCache[query])
+  } else if ('aId' in algoliaSearch && 'sId' in algoliaSearch) {
+    // Use algolia.net API
+    console.debug('Use algolia.net API')
+    GM.xmlHttpRequest({
+      method: 'POST',
+      url: `https://${algoliaSearch.aId.toLowerCase()}-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for%20JavaScript%20(4.12.0)%3B%20Browser%20(lite)&x-algolia-api-key=${algoliaSearch.sId}&x-algolia-application-id=${algoliaSearch.aId}`,
+      data: '{"requests":[{"indexName":"content_rt","query":"' + query.replace('"', '') + '","params":"filters=rtId%20%3E%200%20AND%20isEmsSearchable%20%3D%201&hitsPerPage=20"}]}',
+      onload: function (response) {
+        // Save to algoliaCache
+        response.time = (new Date()).toJSON()
+
+        // Chrome fix: Otherwise JSON.stringify(cache) omits responseText
+        const newobj = {}
+        for (const key in response) {
+          newobj[key] = response[key]
+        }
+        newobj.responseText = response.responseText
+
+        algoliaCache[query] = newobj
+
+        GM.setValue('algoliaCache', JSON.stringify(algoliaCache))
+
+        console.log(response)
+        handleAlgoliaResponse(response)
+      },
+      onerror: function (response) {
+        console.log('Rottentomatoes algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+      }
+    })
+  } else if (url in cache) {
+    // Use cached legacy response
+    console.debug('Use cached legacy response')
     handleResponse(cache[url])
   } else {
+    console.debug('algoliaSearch not configured, falling back to legacy API' + url)
     GM.xmlHttpRequest({
       method: 'GET',
       url: url,
       onload: function (response) {
-        // Save to chache
+        // Save to cache
 
         response.time = (new Date()).toJSON()
 
@@ -240,14 +345,14 @@ async function loadMeter (query, type, year) {
         handleResponse(response)
       },
       onerror: function (response) {
-        console.log('Rottentomatoes GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+        console.log('Rottentomatoes legacy API GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
       }
     })
   }
 }
 
 function handleResponse (response) {
-  // Handle GM.xmlHttpRequest response
+  // Handle GM.xmlHttpRequest response from legacy API https://www.rottentomatoes.com/api/private/v2.0/search/?limit=100&q={query}&t={type}
 
   const data = JSON.parse(response.responseText)
 
@@ -310,8 +415,100 @@ function handleResponse (response) {
 
       return b.matchQuality - a.matchQuality
     })
-
+    data[prop][0].legacy = 1
     showMeter(data[prop], new Date(response.time))
+  } else {
+    console.log('Rottentomatoes: No results for ' + current.query)
+  }
+}
+
+function handleAlgoliaResponse (response) {
+  // Handle GM.xmlHttpRequest response
+  const rawData = JSON.parse(response.responseText)
+
+  // Filter according to type
+  const hits = rawData.results[0].hits.filter(hit => hit.type === current.type)
+
+  // Change to same data structure as legacy API
+  const arr = []
+
+  hits.forEach(function (hit) {
+    const result = {
+      name: hit.title,
+      year: parseInt(hit.releaseYear),
+      url: '/' + (current.type === 'tv' ? 'tv' : 'm') + '/' + hit.vanity,
+      meterClass: null,
+      meterScore: null,
+      audienceClass: null,
+      audienceScore: null
+    }
+    if ('rottenTomatoes' in hit) {
+      if ('criticsIconUrl' in hit.rottenTomatoes) {
+        result.meterClass = hit.rottenTomatoes.criticsIconUrl.match(/\/(\w+)\.png/)[1]
+      }
+      if ('criticsScore' in hit.rottenTomatoes) {
+        result.meterScore = hit.rottenTomatoes.criticsScore
+      }
+      if ('audienceIconUrl' in hit.rottenTomatoes) {
+        result.audienceClass = hit.rottenTomatoes.audienceIconUrl.match(/\/(\w+)\.png/)[1]
+      }
+      if ('audienceScore' in hit.rottenTomatoes) {
+        result.audienceScore = hit.rottenTomatoes.audienceScore
+      }
+      if ('certifiedFresh' in hit.rottenTomatoes && hit.rottenTomatoes.certifiedFresh) {
+        result.meterClass = 'certified_fresh'
+      }
+    }
+    arr.push(result)
+  })
+  if (arr && arr.length) {
+    // Sort results by closest match
+    function matchQuality (title, year) {
+      if (title === current.query && year === current.year) {
+        return 102 + year
+      }
+      if (title === current.query && current.year) {
+        return 101 - Math.abs(year - current.year)
+      }
+      if (title.replace(/\(.+\)/, '').trim() === current.query && current.year) {
+        return 100 - Math.abs(year - current.year)
+      }
+      if (title === current.query) {
+        return 7
+      }
+      if (title.replace(/\(.+\)/, '').trim() === current.query) {
+        return 6
+      }
+      if (title.startsWith(current.query)) {
+        return 5
+      }
+      if (current.query.indexOf(title) !== -1) {
+        return 4
+      }
+      if (title.indexOf(current.query) !== -1) {
+        return 3
+      }
+      if (current.query.toLowerCase().indexOf(title.toLowerCase()) !== -1) {
+        return 2
+      }
+      if (title.toLowerCase().indexOf(current.query.toLowerCase()) !== -1) {
+        return 1
+      }
+      return 0
+    }
+
+    arr.sort(function (a, b) {
+      if (!a.hasOwnProperty('matchQuality')) {
+        a.matchQuality = matchQuality(a.name, a.year)
+      }
+      if (!b.hasOwnProperty('matchQuality')) {
+        b.matchQuality = matchQuality(b.name, b.year)
+      }
+
+      return b.matchQuality - a.matchQuality
+    })
+
+    showMeter(arr, new Date(response.time))
   } else {
     console.log('Rottentomatoes: No results for ' + current.query)
   }
@@ -341,7 +538,7 @@ function showMeter (arr, time) {
   })
 
   // First result
-  $('<div class="firstResult"><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[0].url + '">' + arr[0].name + ' (' + arr[0].year + ')</a>' + meterBar(arr[0]) + '</div>').appendTo(main)
+  $('<div class="firstResult"><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[0].url + '">' + arr[0].name + ' (' + arr[0].year + ')</a>' + meterBar(arr[0]) + audienceBar(arr[0]) + '</div>').appendTo(main)
 
   // Shall the following results be collapsed by default?
   if ((arr.length > 1 && arr[0].matchQuality > 10) || arr.length > 10) {
@@ -349,9 +546,13 @@ function showMeter (arr, time) {
     const more = div = $('<div style="display:none"></div>').appendTo(main)
   }
 
+  if (arr.length > 0 && 'legacy' in arr[0] && arr[0].legacy === 1) {
+    $('<div>You need to visit <a href="https://www.rottentomatoes.com/">www.rottentomatoes.com</a> at least once to enable audience score.</div>').appendTo(main)
+  }
+
   // More results
   for (let i = 1; i < arr.length; i++) {
-    $('<div><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[i].url + '">' + arr[i].name + ' (' + arr[i].year + ')</a>' + meterBar(arr[i]) + '</div>').appendTo(div)
+    $('<div><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[i].url + '">' + arr[i].name + ' (' + arr[i].year + ')</a>' + meterBar(arr[i]) + audienceBar(arr[i]) + '</div>').appendTo(div)
   }
 
   // Footer
@@ -897,6 +1098,10 @@ function main () {
 }
 
 (function () {
+  if (document.location.href === 'https://www.rottentomatoes.com/') {
+    updateAlgolia()
+  }
+
   const firstRunResult = main()
   let lastLoc = document.location.href
   let lastContent = document.body.innerText
