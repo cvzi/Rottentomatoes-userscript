@@ -227,6 +227,24 @@ async function addFlixsterEMS (orgData) {
   if ('consensus' in flixsterData.tomatometer && flixsterData.tomatometer.consensus) {
     orgData.consensus = flixsterData.tomatometer.consensus
   }
+  if ('userRatingSummary' in flixsterData) {
+    if ('scoresCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.scoresCount) {
+      orgData.audienceCount = flixsterData.userRatingSummary.scoresCount
+    } else if ('dtlScoreCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.dtlScoreCount) {
+      orgData.audienceCount = flixsterData.userRatingSummary.dtlScoreCount
+    }
+    if ('wtsCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.wtsCount) {
+      orgData.audienceWantToSee = flixsterData.userRatingSummary.wtsCount
+    } else if ('dtlWtsCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.dtlWtsCount) {
+      orgData.audienceWantToSee = flixsterData.userRatingSummary.dtlWtsCount
+    }
+    if ('reviewCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.reviewCount) {
+      orgData.audienceReviewCount = flixsterData.userRatingSummary.reviewCount
+    }
+    if ('avgScore' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.avgScore) {
+      orgData.audienceAvgScore = flixsterData.userRatingSummary.avgScore
+    }
+  }
   return orgData
 }
 
@@ -257,21 +275,21 @@ function meterBar (data) {
   if (data.meterClass === 'certified_fresh') {
     barColor = '#C91B22'
     color = 'yellow'
-    textInside = emojiStrawberry + ' ' + data.meterScore + '%'
+    textInside = emojiStrawberry + ' ' + data.meterScore.toLocaleString() + '%'
     width = data.meterScore
   } else if (data.meterClass === 'fresh') {
     barColor = '#C91B22'
     color = 'white'
-    textInside = emojiTomato + ' ' + data.meterScore + '%'
+    textInside = emojiTomato + ' ' + data.meterScore.toLocaleString() + '%'
     width = data.meterScore
   } else if (data.meterClass === 'rotten') {
     color = 'gray'
     barColor = '#94B13C'
     if (data.meterScore > 30) {
-      textAfter = data.meterScore + '% '
+      textAfter = data.meterScore.toLocaleString() + '% '
       textInside = '<span style="font-size:13px">' + emojiGreenApple + '</span>'
     } else {
-      textAfter = data.meterScore + '% <span style="font-size:13px">' + emojiGreenApple + '</span>'
+      textAfter = data.meterScore.toLocaleString() + '% <span style="font-size:13px">' + emojiGreenApple + '</span>'
     }
     width = data.meterScore
   } else {
@@ -281,9 +299,9 @@ function meterBar (data) {
     width = 100
   }
 
-  let title = 'Critics ' + data.meterScore + '% ' + data.meterClass
+  let title = 'Critics ' + data.meterScore.toLocaleString() + '% ' + data.meterClass
   if ('numReviews' in data) {
-    title += ' ' + data.numReviews + ' reviews'
+    title += ' ' + data.numReviews.toLocaleString() + ' reviews'
   }
   if ('consensus' in data) {
     const node = document.createElement('span')
@@ -309,16 +327,16 @@ function audienceBar (data) {
   if (data.audienceClass === 'red_popcorn') {
     barColor = '#C91B22'
     color = data.audienceScore > 94 ? 'yellow' : 'white'
-    textInside = emojiPopcorn + ' ' + data.audienceScore + '%'
+    textInside = emojiPopcorn + ' ' + data.audienceScore.toLocaleString() + '%'
     width = data.audienceScore
   } else if (data.audienceClass === 'green_popcorn') {
     color = 'gray'
     barColor = '#94B13C'
     if (data.audienceScore > 30) {
-      textAfter = data.audienceScore + '% '
+      textAfter = data.audienceScore.toLocaleString() + '% '
       textInside = '<span style="font-size:13px">' + emojiGreenSalad + '</span>'
     } else {
-      textAfter = data.audienceScore + '% <span style="font-size:13px">' + emojiNauseated + '</span>'
+      textAfter = data.audienceScore.toLocaleString() + '% <span style="font-size:13px">' + emojiNauseated + '</span>'
     }
     width = data.audienceScore
   } else {
@@ -328,8 +346,22 @@ function audienceBar (data) {
     width = 100
   }
 
-  const title = 'Audience ' + data.audienceScore + '% ' + data.audienceClass
+  let title = 'Audience ' + data.audienceScore.toLocaleString() + '% ' + data.audienceClass
+  const titleLine2 = []
+  if ('audienceCount' in data) {
+    titleLine2.push(data.audienceCount.toLocaleString() + ' Votes')
+  }
+  if ('audienceReviewCount' in data) {
+    titleLine2.push(data.audienceReviewCount.toLocaleString() + ' Reviews')
+  }
+  if ('audienceAvgScore' in data) {
+    titleLine2.push('Average score: ' + data.audienceAvgScore.toLocaleString() + ' / 5 stars')
+  }
+  if ('audienceWantToSee' in data) {
+    titleLine2.push(data.audienceWantToSee.toLocaleString() + ' want to see')
+  }
 
+  title = title + (titleLine2 ? ('\n' + titleLine2.join('\n')) : '')
   return '<div title="' + title + '" style="cursor:help; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
     '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
 }
