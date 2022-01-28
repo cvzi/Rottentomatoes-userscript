@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     26
+// @version     27
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -276,22 +276,22 @@ function meterBar (data) {
     barColor = '#C91B22'
     color = 'yellow'
     textInside = emojiStrawberry + ' ' + data.meterScore.toLocaleString() + '%'
-    width = data.meterScore
+    width = data.meterScore || 0
   } else if (data.meterClass === 'fresh') {
     barColor = '#C91B22'
     color = 'white'
     textInside = emojiTomato + ' ' + data.meterScore.toLocaleString() + '%'
-    width = data.meterScore
+    width = data.meterScore || 0
   } else if (data.meterClass === 'rotten') {
     color = 'gray'
     barColor = '#94B13C'
-    if (data.meterScore > 30) {
+    if (data.meterScore && data.meterScore > 30) {
       textAfter = data.meterScore.toLocaleString() + '% '
       textInside = '<span style="font-size:13px">' + emojiGreenApple + '</span>'
     } else {
       textAfter = data.meterScore.toLocaleString() + '% <span style="font-size:13px">' + emojiGreenApple + '</span>'
     }
-    width = data.meterScore
+    width = data.meterScore || 0
   } else {
     bgColor = barColor = '#787878'
     color = 'silver'
@@ -299,8 +299,8 @@ function meterBar (data) {
     width = 100
   }
 
-  let title = 'Critics ' + data.meterScore.toLocaleString() + '% ' + data.meterClass
-  if ('numReviews' in data) {
+  let title = 'Critics ' + (typeof data.meterScore === 'number' ? data.meterScore.toLocaleString() : 'N/A') + '% ' + data.meterClass
+  if ('numReviews' in data && typeof data.numReviews === 'number') {
     title += ' ' + data.numReviews.toLocaleString() + ' reviews'
   }
   if ('consensus' in data) {
@@ -346,18 +346,18 @@ function audienceBar (data) {
     width = 100
   }
 
-  let title = 'Audience ' + data.audienceScore.toLocaleString() + '% ' + data.audienceClass
+  let title = 'Audience ' + (typeof data.audienceScore === 'number' ? data.audienceScore.toLocaleString() : 'N/A') + '% ' + data.audienceClass
   const titleLine2 = []
-  if ('audienceCount' in data) {
+  if ('audienceCount' in data && typeof data.audienceCount === 'number') {
     titleLine2.push(data.audienceCount.toLocaleString() + ' Votes')
   }
   if ('audienceReviewCount' in data) {
     titleLine2.push(data.audienceReviewCount.toLocaleString() + ' Reviews')
   }
-  if ('audienceAvgScore' in data) {
+  if ('audienceAvgScore' in data && typeof data.audienceAvgScore === 'number') {
     titleLine2.push('Average score: ' + data.audienceAvgScore.toLocaleString() + ' / 5 stars')
   }
-  if ('audienceWantToSee' in data) {
+  if ('audienceWantToSee' in data && typeof data.audienceWantToSee === 'number') {
     titleLine2.push(data.audienceWantToSee.toLocaleString() + ' want to see')
   }
 
