@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     27
+// @version     28
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -819,8 +819,8 @@ const sites = {
         if (title.match(/\s\(\d{4}\)$/)) {
           year = parseInt(title.match(/\s\((\d{4})\)$/)[1])
           title = title.replace(/\s\(\d{4}\)$/, '') // Remove year
-        } else if (document.querySelector('.release_data .data')) {
-          year = document.querySelector('.release_data .data').textContent.match(/(\d{4})/)[1]
+        } else if (document.querySelector('.release_date')) {
+          year = document.querySelector('.release_date').textContent.match(/(\d{4})/)[1]
         }
 
         return [title, year]
