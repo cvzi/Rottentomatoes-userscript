@@ -13,8 +13,19 @@ Tested with Firefox/**Tampermonkey** and Chrome/**Tampermonkey**.
 I develop a similar script for the [Metacritic](https://www.metacritic.com/) score, see [cvzi/Metacritic-userscript](https://github.com/cvzi/Metacritic-userscript/)  
 and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterboxd-userscript](https://github.com/cvzi/Letterboxd-userscript/)
 
+## Symbols:
 
-Supported sites and products:
+|Icon | rottentomatoes    | https://www.rottentomatoes.com/about#whatisthetomatometer  |
+|-----|-------------------|------------------------------------------------------------|
+| 🍓  |  certified fresh  | 75% or higher and at least 5 top critic reviews            |
+| 🍅  |  fresh            | 60% positive critic reviews                                |
+| 🍏  |  rotten           | less than 60% positive critic reviews                      |
+| 🍿  |  full popcorn     | 60% user reviews of 3.5 or higher                          |
+| 🥗  |  spilled popcorn  | less than 60% user reviews of 3.5                          |
+
+
+## Supported sites and products:
+
  * imdb.com
  * metacritic.com
  * letterboxd.com
