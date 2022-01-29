@@ -49,5 +49,8 @@ and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterbo
  * ShareTV
 
 Screenshot:
-![Screenshot of amazon product page](https://raw.githubusercontent.com/cvzi/Rottentomatoes-userscript/master/screenshot_amazon.jpg)
+![Screenshot of amazon product page](https://raw.githubusercontent.com/cvzi/Rottentomatoes-userscript/master/screenshot_animation.png)
 
+![Screenshot of amazon product page](https://raw.githubusercontent.com/cvzi/Rottentomatoes-userscript/master/screenshot_audience.png)
+
+![Screenshot of amazon product page](https://raw.githubusercontent.com/cvzi/Rottentomatoes-userscript/master/screenshot_amazon.jpg)
