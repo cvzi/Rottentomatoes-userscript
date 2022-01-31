@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     28
+// @version     29
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -71,13 +71,16 @@
 // @include     https://www.metacritic.com/movie/*
 // @include     http://www.metacritic.com/tv/*
 // @include     https://www.metacritic.com/tv/*
-// @include     https://www.nme.com/reviews/movie/*
+// @include     https://www.nme.com/reviews/*
 // @include     https://itunes.apple.com/*/movie/*
 // @include     https://itunes.apple.com/*/tv-season/*
 // @include     http://epguides.com/*
 // @include     http://www.epguides.com/*
+// @include     https://epguides.com/*
+// @include     https://www.epguides.com/*
 // @include     https://sharetv.com/shows/*
 // @include     http://www.cc.com/*
+// @include     https://www.cc.com/*
 // @include     https://www.tvhoard.com/*
 // @include     https://www.amc.com/*
 // @include     https://www.amcplus.com/*
@@ -1034,7 +1037,7 @@ const sites = {
     host: ['nme.com'],
     condition: () => document.location.pathname.startsWith('/reviews/'),
     products: [{
-      condition: () => document.location.pathname.startsWith('/reviews/movie/'),
+      condition: () => document.querySelector('.tdb-breadcrumbs a[href*="/reviews/film-reviews"]'),
       type: 'movie',
       data: function () {
         let year = null
@@ -1043,11 +1046,20 @@ const sites = {
         } catch (e) {}
 
         try {
-          return [document.querySelector('.title-primary').textContent.match(/‘(.+?)’/)[1], year]
+          return [document.title.match(/[‘'](.+?)[’']/)[1], year]
         } catch (e) {
-          return [document.querySelector('h1').textContent.match(/:\s*(.+)/)[1].trim(), year]
+          try {
+            return [document.querySelector('h1.tdb-title-text').textContent.match(/[‘'](.+?)[’']/)[1], year]
+          } catch (e) {
+            return [document.querySelector('h1').textContent.match(/:\s*(.+)/)[1].trim(), year]
+          }
         }
       }
+    },
+    {
+      condition: () => document.querySelector('.tdb-breadcrumbs a[href*="/reviews/tv-reviews"]'),
+      type: 'tv',
+      data: () => document.querySelector('h1.tdb-title-text').textContent.match(/‘(.+?)’/)[1]
     }]
   },
   itunes: {
@@ -1072,11 +1084,11 @@ const sites = {
   },
   epguides: {
     host: ['epguides.com'],
-    condition: () => document.getElementById('TVHeader'),
+    condition: () => document.getElementById('eplist'),
     products: [{
-      condition: () => document.getElementById('TVHeader') && document.querySelector('body>div#header h1'),
+      condition: () => document.getElementById('eplist') && document.querySelector('.center.titleblock h2'),
       type: 'tv',
-      data: () => document.querySelector('body>div#header h1').textContent.trim()
+      data: () => document.querySelector('.center.titleblock h2').textContent.trim()
     }]
   },
   ShareTV: {
@@ -1094,7 +1106,7 @@ const sites = {
     products: [{
       condition: () => document.location.pathname.split('/').length === 3 && document.querySelector("meta[property='og:title']"),
       type: 'tv',
-      data: () => document.querySelector("meta[property='og:title']").content
+      data: () => document.querySelector("meta[property='og:title']").content.replace('| Comedy Central', '').trim()
     },
     {
       condition: () => document.location.pathname.split('/').length === 3 && document.title.match(/(.+?)\s+-\s+Series/),
