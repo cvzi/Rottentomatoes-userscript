@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Show Rottentomatoes meter
-// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, tv.com, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com
+// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com
 // @namespace   cuzi
 // @updateURL   https://openuserjs.org/meta/cuzi/Show_Rottentomatoes_meter.meta.js
 // @grant       GM_xmlhttpRequest
@@ -10,76 +10,53 @@
 // @grant       GM.xmlHttpRequest
 // @grant       GM.setValue
 // @grant       GM.getValue
-// @require     http://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
-// @license     GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
-// @version     30
+// @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
+// @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
+// @version     31
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
 // @include     https://www.rottentomatoes.com/
 // @include     https://play.google.com/store/movies/details/*
-// @include     http://www.amazon.com/*
-// @include     https://www.amazon.com/*
-// @include     http://www.amazon.co.uk/*
-// @include     https://www.amazon.co.uk/*
-// @include     http://www.amazon.fr/*
-// @include     https://www.amazon.fr/*
-// @include     http://www.amazon.de/*
-// @include     https://www.amazon.de/*
-// @include     http://www.amazon.es/*
-// @include     https://www.amazon.es/*
-// @include     http://www.amazon.ca/*
 // @include     https://www.amazon.ca/*
-// @include     http://www.amazon.in/*
-// @include     https://www.amazon.in/*
-// @include     http://www.amazon.it/*
-// @include     https://www.amazon.it/*
-// @include     http://www.amazon.co.jp/*
 // @include     https://www.amazon.co.jp/*
-// @include     http://www.amazon.com.mx/*
-// @include     https://www.amazon.com.mx/*
-// @include     http://www.amazon.com.au/*
+// @include     https://www.amazon.co.uk/*
+// @include     https://smile.amazon.co.uk/*
 // @include     https://www.amazon.com.au/*
-// @include     http://www.imdb.com/title/*
+// @include     https://www.amazon.com.mx/*
+// @include     https://www.amazon.com/*
+// @include     https://smile.amazon.com/*
+// @include     https://www.amazon.de/*
+// @include     https://smile.amazon.de/*
+// @include     https://www.amazon.es/*
+// @include     https://www.amazon.fr/*
+// @include     https://www.amazon.in/*
+// @include     https://www.amazon.it/*
 // @include     https://www.imdb.com/title/*
-// @include     http://www.serienjunkies.de/*
 // @include     https://www.serienjunkies.de/*
-// @include     http://www.tv.com/shows/*
-// @include     http://www.boxofficemojo.com/movies/*
 // @include     https://www.boxofficemojo.com/movies/*
 // @include     https://www.boxofficemojo.com/release/*
-// @include     http://www.allmovie.com/movie/*
 // @include     https://www.allmovie.com/movie/*
 // @include     https://en.wikipedia.org/*
 // @include     https://www.fandango.com/*
 // @include     https://www.themoviedb.org/movie/*
 // @include     https://www.themoviedb.org/tv/*
-// @include     http://letterboxd.com/film/*
 // @include     https://letterboxd.com/film/*
 // @exclude     https://letterboxd.com/film/*/image*
-// @include     http://www.tvmaze.com/shows/*
 // @include     https://www.tvmaze.com/shows/*
-// @include     http://www.tvguide.com/tvshows/*
 // @include     https://www.tvguide.com/tvshows/*
-// @include     http://followshows.com/show/*
 // @include     https://followshows.com/show/*
 // @include     https://thetvdb.com/series/*
 // @include     https://thetvdb.com/movies/*
-// @include     http://tvnfo.com/s/*
 // @include     https://tvnfo.com/s/*
-// @include     http://www.metacritic.com/movie/*
 // @include     https://www.metacritic.com/movie/*
-// @include     http://www.metacritic.com/tv/*
 // @include     https://www.metacritic.com/tv/*
 // @include     https://www.nme.com/reviews/*
 // @include     https://itunes.apple.com/*/movie/*
 // @include     https://itunes.apple.com/*/tv-season/*
-// @include     http://epguides.com/*
-// @include     http://www.epguides.com/*
 // @include     https://epguides.com/*
 // @include     https://www.epguides.com/*
 // @include     https://sharetv.com/shows/*
-// @include     http://www.cc.com/*
 // @include     https://www.cc.com/*
 // @include     https://www.tvhoard.com/*
 // @include     https://www.amc.com/*
@@ -852,7 +829,7 @@ const sites = {
       {
         condition: () => document.querySelector('[data-automation-id=title]'),
         type: 'movie',
-        data: () => document.querySelector('[data-automation-id=title]').textContent.trim()
+        data: () => document.querySelector('[data-automation-id=title]').textContent.trim().replace(/\[.{1,8}\]/, '')
       }
     ]
   },
