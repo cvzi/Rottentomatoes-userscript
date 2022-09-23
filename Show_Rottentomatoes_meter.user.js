@@ -12,7 +12,7 @@
 // @grant       GM.getValue
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
-// @version     31
+// @version     32
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -547,7 +547,7 @@ async function handleAlgoliaResponse (response) {
     const result = {
       name: hit.title,
       year: parseInt(hit.releaseYear),
-      url: '/' + (current.type === 'tv' ? 'tv' : 'm') + '/' + hit.vanity,
+      url: '/' + (current.type === 'tv' ? 'tv' : 'm') + '/' + ('vanity' in hit ? hit.vanity : hit.title.toLowerCase()),
       meterClass: null,
       meterScore: null,
       audienceClass: null,
