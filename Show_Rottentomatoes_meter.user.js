@@ -12,7 +12,8 @@
 // @grant       GM.getValue
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
-// @version     32
+// @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
+// @version     33
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -65,7 +66,7 @@
 // @include     https://www.sho.com/*
 // ==/UserScript==
 
-/* global GM, $, unsafeWindow, RottenTomatoes */
+/* global GM, $, unsafeWindow */
 
 const baseURL = 'https://www.rottentomatoes.com'
 const baseURLSearch = baseURL + '/api/private/v2.0/search/?limit=100&q={query}&t={type}'
@@ -231,10 +232,10 @@ async function addFlixsterEMS (orgData) {
 function updateAlgolia () {
   // Get algolia data from https://www.rottentomatoes.com/
   const algoliaSearch = { aId: null, sId: null }
-  if (RottenTomatoes && 'thirdParty' in RottenTomatoes && 'algoliaSearch' in RottenTomatoes.thirdParty) {
-    if (typeof (RottenTomatoes.thirdParty.algoliaSearch.aId) === 'string' && typeof (RottenTomatoes.thirdParty.algoliaSearch.sId) === 'string') {
-      algoliaSearch.aId = RottenTomatoes.thirdParty.algoliaSearch.aId // x-algolia-application-id
-      algoliaSearch.sId = RottenTomatoes.thirdParty.algoliaSearch.sId // x-algolia-api-key
+  if (unsafeWindow.RottenTomatoes && 'thirdParty' in unsafeWindow.RottenTomatoes && 'algoliaSearch' in unsafeWindow.RottenTomatoes.thirdParty) {
+    if (typeof (unsafeWindow.RottenTomatoes.thirdParty.algoliaSearch.aId) === 'string' && typeof (unsafeWindow.RottenTomatoes.thirdParty.algoliaSearch.sId) === 'string') {
+      algoliaSearch.aId = unsafeWindow.RottenTomatoes.thirdParty.algoliaSearch.aId // x-algolia-application-id
+      algoliaSearch.sId = unsafeWindow.RottenTomatoes.thirdParty.algoliaSearch.sId // x-algolia-api-key
     }
   }
   // Always store even if null to hide the "You need to visit www.rottentomatoes.com at least once to enable audience score" warning
