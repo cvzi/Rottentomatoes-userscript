@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     34
+// @version     35
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -63,6 +63,7 @@
 // @match       https://www.amcplus.com/*
 // @match       https://rlsbb.ru/*/
 // @match       https://www.sho.com/*
+// @match       https://psa.pm/*
 // ==/UserScript==
 
 /* global GM, $, unsafeWindow */
@@ -1154,6 +1155,30 @@ const sites = {
         type: 'tv',
         data: () => parseLDJSON('name', (j) => (j['@type'] === 'TVSeries'))
       }]
+  },
+  psapm: {
+    host: ['psa.pm'],
+    condition: Always,
+    products: [
+      {
+        condition: () => document.location.pathname.startsWith('/movie/'),
+        type: 'movie',
+        data: function () {
+          const title = document.querySelector('h1').textContent.trim()
+          const m = title.match(/(.+)\((\d+)\)$/)
+          if (m) {
+            return [m[1].trim(), parseInt(m[2])]
+          } else {
+            return title
+          }
+        }
+      },
+      {
+        condition: () => document.location.pathname.startsWith('/tv-show/'),
+        type: 'tv',
+        data: () => document.querySelector('h1').textContent.trim()
+      }
+    ]
   }
 }
 
