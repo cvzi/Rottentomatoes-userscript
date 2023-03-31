@@ -204,9 +204,18 @@ async function addFlixsterEMS (orgData) {
   }
   if ('numReviews' in flixsterData.tomatometer && flixsterData.tomatometer.numReviews) {
     orgData.numReviews = flixsterData.tomatometer.numReviews
+    if ('freshCount' in flixsterData.tomatometer && flixsterData.tomatometer.freshCount != null) {
+      orgData.freshCount = flixsterData.tomatometer.freshCount
+    }
+    if ('rottenCount' in flixsterData.tomatometer && flixsterData.tomatometer.rottenCount != null) {
+      orgData.rottenCount = flixsterData.tomatometer.rottenCount
+    }
   }
   if ('consensus' in flixsterData.tomatometer && flixsterData.tomatometer.consensus) {
     orgData.consensus = flixsterData.tomatometer.consensus
+  }
+  if ('avgScore' in flixsterData.tomatometer && flixsterData.tomatometer.avgScore != null) {
+    orgData.avgScore = flixsterData.tomatometer.avgScore
   }
   if ('userRatingSummary' in flixsterData) {
     if ('scoresCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.scoresCount) {
@@ -270,7 +279,7 @@ function meterBar (data) {
     color = 'gray'
     barColor = '#94B13C'
     if (data.meterScore && data.meterScore > 30) {
-      textAfter = data.meterScore.toLocaleString() + '% '
+      textAfter = '<span style="font-size: 15px;padding-top: 2px;display: inline-block;">' + data.meterScore.toLocaleString() + '%</span>'
       textInside = '<span style="font-size:13px">' + emojiGreenApple + '</span>'
     } else {
       textAfter = data.meterScore.toLocaleString() + '% <span style="font-size:13px">' + emojiGreenApple + '</span>'
@@ -284,16 +293,39 @@ function meterBar (data) {
   }
 
   let title = 'Critics ' + (typeof data.meterScore === 'number' ? data.meterScore.toLocaleString() : 'N/A') + '% ' + data.meterClass
+  let avg = ''
+  if ('avgScore' in data) {
+    const node = document.createElement('span')
+    node.innerHTML = data.consensus
+    title += '\nAverage score: ' + data.avgScore.toLocaleString() + ' / 10'
+    avg = '<span style="font-weight:bolder">' + data.avgScore.toLocaleString() + '</span>/10'
+  }
   if ('numReviews' in data && typeof data.numReviews === 'number') {
-    title += ' ' + data.numReviews.toLocaleString() + ' reviews'
+    title += ' from ' + data.numReviews.toLocaleString() + ' reviews'
+    if ('freshCount' in data && data.numReviews > 0) {
+      const p = parseInt(100 * parseFloat(data.freshCount) / parseFloat(data.numReviews))
+      title += '\n' + data.freshCount.toLocaleString() + '/' + data.numReviews.toLocaleString() + ' ' + p + '% fresh reviews'
+    }
+    if ('rottenCount' in data) {
+      const p = parseInt(100 * parseFloat(data.rottenCount) / parseFloat(data.numReviews))
+      title += '\n' + data.rottenCount.toLocaleString() + '/' + data.numReviews.toLocaleString() + ' ' + p + '% rotten reviews'
+    }
   }
   if ('consensus' in data) {
     const node = document.createElement('span')
     node.innerHTML = data.consensus
     title += '\n' + node.textContent
   }
-  return '<div title="' + title + '" style="cursor:help; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
-    '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
+  return '<div title="' + title + '" style="cursor:help;">' +
+      '<div style="float:left; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+        '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' +
+          textInside +
+        '</div>' +
+        textAfter +
+      '</div>' +
+      '<div style="float:left; padding: 3px 0px 0px 3px;">' + avg + '</div>' +
+      '<div style="clear:left;"></div>' +
+    '</div>'
 }
 function audienceBar (data) {
   // Create the "progress" bar with the audience score
@@ -307,6 +339,7 @@ function audienceBar (data) {
   let width = 0
   let textInside = ''
   let textAfter = ''
+  let avg = ''
 
   if (data.audienceClass === 'red_popcorn') {
     barColor = '#C91B22'
@@ -317,7 +350,7 @@ function audienceBar (data) {
     color = 'gray'
     barColor = '#94B13C'
     if (data.audienceScore > 30) {
-      textAfter = data.audienceScore.toLocaleString() + '% '
+      textAfter = '<span style="font-size: 15px;padding-top: 2px;display: inline-block;">' + data.audienceScore.toLocaleString() + '%</span>'
       textInside = '<span style="font-size:13px">' + emojiGreenSalad + '</span>'
     } else {
       textAfter = data.audienceScore.toLocaleString() + '% <span style="font-size:13px">' + emojiNauseated + '</span>'
@@ -340,14 +373,23 @@ function audienceBar (data) {
   }
   if ('audienceAvgScore' in data && typeof data.audienceAvgScore === 'number') {
     titleLine2.push('Average score: ' + data.audienceAvgScore.toLocaleString() + ' / 5 stars')
+    avg = '<span style="font-weight:bolder">' + data.audienceAvgScore.toLocaleString() + '</span>/5'
   }
   if ('audienceWantToSee' in data && typeof data.audienceWantToSee === 'number') {
     titleLine2.push(data.audienceWantToSee.toLocaleString() + ' want to see')
   }
 
   title = title + (titleLine2 ? ('\n' + titleLine2.join('\n')) : '')
-  return '<div title="' + title + '" style="cursor:help; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
-    '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' + textInside + '</div>' + textAfter + '</div>'
+  return '<div title="' + title + '" style="cursor:help;">' +
+      '<div style="float:left; margin-top:1px; width:100px; overflow: hidden;height: 20px;background-color: ' + bgColor + ';color: ' + color + ';text-align:center; border-radius: 4px;box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">' +
+        '<div style="width:' + width + '%; background-color: ' + barColor + '; color: ' + color + '; font-size:14px; font-weight:bold; text-align:center; float:left; height: 100%;line-height: 20px;box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);transition: width 0.6s ease;">' +
+          textInside +
+        '</div>' +
+        textAfter +
+      '</div>' +
+      '<div style="float:left; padding: 3px 0px 0px 3px;">' + avg + '</div>' +
+      '<div style="clear:left;"></div>' +
+    '</div>'
 }
 
 const current = {
