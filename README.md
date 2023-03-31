@@ -2,6 +2,10 @@ Rottentomatoes-userscript
 =====================
 A userscript or greasemonkey script that shows the score/meter from rottentomatoes.com on several other websites like amazon, google play and others.
 
+After installing the script, you need to visit [www.rottentomatoes.com](https://www.rottentomatoes.com/) at least once.
+Just open [www.rottentomatoes.com](https://www.rottentomatoes.com/) and let the site fully load itself, the script will automatically read
+some API keys from the website. You can close the tab when the site has fully loaded.
+
 It's primarily designed for Firefox and Chrome with
 [Tampermonkey](https://www.tampermonkey.net/) [![Chrome logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/chrome16.png)](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) [![Firefox logo](https://raw.githubusercontent.com/OpenUserJS/OpenUserJS.org/master/public/images/ua/firefox16.png)](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
 or
