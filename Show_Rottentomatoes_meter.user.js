@@ -16,7 +16,7 @@
 // @version     36
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
-// @connect     www.flixster.com
+// @connect     flixster.com
 // @match       https://www.rottentomatoes.com/
 // @match       https://play.google.com/store/movies/details/*
 // @match       https://www.amazon.ca/*
@@ -73,7 +73,7 @@ const baseURL = 'https://www.rottentomatoes.com'
 const baseURLOpenTab = baseURL + '/search/?search={query}'
 const algoliaURL = 'https://{domain}-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent={agent}&x-algolia-api-key={sId}&x-algolia-application-id={aId}'
 const algoliaAgent = 'Algolia for JavaScript (4.12.0); Browser (lite)'
-const flixsterEMSURL = 'https://www.flixster.com/api/ems/v2/emsId/{emsId}'
+const flixsterEMSURL = 'https://flixster.com/api/ems/v2/emsId/{emsId}'
 const cacheExpireAfterHours = 4
 const emojiTomato = String.fromCodePoint(0x1F345)
 const emojiGreenApple = String.fromCodePoint(0x1F34F)
