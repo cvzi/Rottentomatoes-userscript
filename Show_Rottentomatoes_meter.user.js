@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     35
+// @version     36
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.flixster.com
@@ -68,8 +68,8 @@
 
 /* global GM, $, unsafeWindow */
 
+const scriptName = 'Show Rottentomatoes meter'
 const baseURL = 'https://www.rottentomatoes.com'
-const baseURLSearch = baseURL + '/api/private/v2.0/search/?limit=100&q={query}&t={type}'
 const baseURLOpenTab = baseURL + '/search/?search={query}'
 const algoliaURL = 'https://{domain}-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent={agent}&x-algolia-api-key={sId}&x-algolia-application-id={aId}'
 const algoliaAgent = 'Algolia for JavaScript (4.12.0); Browser (lite)'
@@ -166,7 +166,7 @@ function askFlixsterEMS (emsId) {
       const url = flixsterEMSURL.replace('{emsId}', encodeURIComponent(emsId))
       GM.xmlHttpRequest({
         method: 'GET',
-        url: url,
+        url,
         onload: function (response) {
           let data = null
           try {
@@ -238,10 +238,13 @@ function updateAlgolia () {
       algoliaSearch.sId = unsafeWindow.RottenTomatoes.thirdParty.algoliaSearch.sId // x-algolia-api-key
     }
   }
-  // Always store even if null to hide the "You need to visit www.rottentomatoes.com at least once to enable audience score" warning
-  GM.setValue('algoliaSearch', JSON.stringify(algoliaSearch)).then(function () {
-    console.debug('Updated algoliaSearch: ' + JSON.stringify(algoliaSearch))
-  })
+  if (algoliaSearch.aId) {
+    GM.setValue('algoliaSearch', JSON.stringify(algoliaSearch)).then(function () {
+      console.debug('Updated algoliaSearch: ' + JSON.stringify(algoliaSearch))
+    })
+  } else {
+    console.debug('algoliaSearch.aId is ' + algoliaSearch.aId)
+  }
 }
 
 function meterBar (data) {
@@ -360,19 +363,6 @@ async function loadMeter (query, type, year) {
   current.query = query
   current.year = year
 
-  const rottenType = type === 'movie' ? 'movie' : 'tvSeries'
-
-  const url = baseURLSearch.replace('{query}', encodeURIComponent(query)).replace('{type}', encodeURIComponent(rottenType))
-
-  const cache = JSON.parse(await GM.getValue('cache', '{}'))
-
-  // Delete cached values, that are expired
-  for (const prop in cache) {
-    if ((new Date()).getTime() - (new Date(cache[prop].time)).getTime() > cacheExpireAfterHours * 60 * 60 * 1000) {
-      delete cache[prop]
-    }
-  }
-
   const algoliaCache = JSON.parse(await GM.getValue('algoliaCache', '{}'))
 
   // Delete algoliaCached values, that are expired
@@ -394,7 +384,7 @@ async function loadMeter (query, type, year) {
     const url = algoliaURL.replace('{domain}', algoliaSearch.aId.toLowerCase()).replace('{aId}', encodeURIComponent(algoliaSearch.aId)).replace('{sId}', encodeURIComponent(algoliaSearch.sId)).replace('{agent}', encodeURIComponent(algoliaAgent))
     GM.xmlHttpRequest({
       method: 'POST',
-      url: url,
+      url,
       data: '{"requests":[{"indexName":"content_rt","query":"' + query.replace('"', '') + '","params":"filters=rtId%20%3E%200%20AND%20isEmsSearchable%20%3D%201&hitsPerPage=20"}]}',
       onload: function (response) {
         // Save to algoliaCache
@@ -417,37 +407,10 @@ async function loadMeter (query, type, year) {
         console.error('Rottentomatoes algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
       }
     })
-  } else if (url in cache) {
-    // Use cached legacy response
-    console.debug('Use cached legacy response')
-    handleResponse(cache[url])
   } else {
-    console.debug('algoliaSearch not configured, falling back to legacy API: ' + url)
-    GM.xmlHttpRequest({
-      method: 'GET',
-      url: url,
-      onload: function (response) {
-        // Save to cache
-
-        response.time = (new Date()).toJSON()
-
-        // Chrome fix: Otherwise JSON.stringify(cache) omits responseText
-        const newobj = {}
-        for (const key in response) {
-          newobj[key] = response[key]
-        }
-        newobj.responseText = response.responseText
-
-        cache[url] = newobj
-
-        GM.setValue('cache', JSON.stringify(cache))
-
-        handleResponse(response)
-      },
-      onerror: function (response) {
-        console.error('Rottentomatoes legacy API GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
-      }
-    })
+    console.error('algoliaSearch not configured')
+    window.alert(scriptName + ' userscript\n\nYou need to visit www.rottentomatoes.com at least once before the script can work.\n\nThe script needs to read some API keys from the website.')
+    showMeter('ALGOLIA_NOT_CONFIGURED', new Date())
   }
 }
 
@@ -496,44 +459,6 @@ function matchQuality (title, year, currentSet) {
   return score
 }
 
-function handleResponse (response) {
-  // Handle GM.xmlHttpRequest response from legacy API https://www.rottentomatoes.com/api/private/v2.0/search/?limit=100&q={query}&t={type}
-
-  const data = JSON.parse(response.responseText)
-
-  // Adapt type name from original metacritic type to rotten tomatoes type
-  let prop
-  if (current.type === 'movie') {
-    prop = 'movies'
-  } else {
-    prop = 'tvSeries'
-    // Align series info with movie info
-    for (let i = 0; i < data[prop].length; i++) {
-      data[prop][i].name = data[prop][i].title
-      data[prop][i].year = data[prop][i].startYear
-    }
-  }
-
-  if (data[prop] && data[prop].length) {
-    // Sort results by closest match
-    const currentSet = new Set(current.query.replace(/[^a-z ]/gi, ' ').split(' '))
-    data[prop].sort(function (a, b) {
-      if (!Object.prototype.hasOwnProperty.call(a, 'matchQuality')) {
-        a.matchQuality = matchQuality(a.name, a.year, currentSet)
-      }
-      if (!Object.prototype.hasOwnProperty.call(b, 'matchQuality')) {
-        b.matchQuality = matchQuality(b.name, b.year, currentSet)
-      }
-
-      return b.matchQuality - a.matchQuality
-    })
-    data[prop][0].legacy = 1
-    showMeter(data[prop], new Date(response.time))
-  } else {
-    console.debug('Rottentomatoes: No results for ' + current.query)
-  }
-}
-
 async function handleAlgoliaResponse (response) {
   // Handle GM.xmlHttpRequest response
   const rawData = JSON.parse(response.responseText)
@@ -541,7 +466,7 @@ async function handleAlgoliaResponse (response) {
   // Filter according to type
   const hits = rawData.results[0].hits.filter(hit => hit.type === current.type)
 
-  // Change to same data structure as legacy API
+  // Change data structure
   const arr = []
 
   hits.forEach(function (hit) {
@@ -623,6 +548,11 @@ function showMeter (arr, time) {
     fontFamily: 'Helvetica,Arial,sans-serif'
   })
 
+  if (arr === 'ALGOLIA_NOT_CONFIGURED') {
+    $('<div>You need to visit <a href="https://www.rottentomatoes.com/">www.rottentomatoes.com</a> at least once to enable the script.</div>').appendTo(main)
+    return
+  }
+
   // First result
   $('<div class="firstResult"><a style="font-size:small; color:#136CB2; " href="' + baseURL + arr[0].url + '">' + arr[0].name + ' (' + arr[0].year + ')</a>' + meterBar(arr[0]) + audienceBar(arr[0]) + '</div>').appendTo(main)
 
@@ -630,10 +560,6 @@ function showMeter (arr, time) {
   if ((arr.length > 1 && arr[0].matchQuality > 10) || arr.length > 10) {
     $('<span style="color:gray;font-size: x-small">More results...</span>').appendTo(main).click(function () { more.css('display', 'block'); this.parentNode.removeChild(this) })
     const more = div = $('<div style="display:none"></div>').appendTo(main)
-  }
-
-  if (arr.length > 0 && 'legacy' in arr[0] && arr[0].legacy === 1) {
-    $('<div>You need to visit <a href="https://www.rottentomatoes.com/">www.rottentomatoes.com</a> at least once to enable audience score.</div>').appendTo(main)
   }
 
   // More results
