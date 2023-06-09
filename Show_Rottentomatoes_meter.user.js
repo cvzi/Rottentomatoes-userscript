@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Show Rottentomatoes meter
-// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com
+// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com, save.tv
 // @namespace   cuzi
 // @updateURL   https://openuserjs.org/meta/cuzi/Show_Rottentomatoes_meter.meta.js
 // @grant       GM_xmlhttpRequest
@@ -64,6 +64,7 @@
 // @match       https://rlsbb.ru/*/
 // @match       https://www.sho.com/*
 // @match       https://psa.pm/*
+// @match       https://www.save.tv/*
 // ==/UserScript==
 
 /* global GM, $, unsafeWindow */
@@ -1145,6 +1146,29 @@ const sites = {
         condition: () => document.location.pathname.startsWith('/tv-show/'),
         type: 'tv',
         data: () => document.querySelector('h1').textContent.trim()
+      }
+    ]
+  },
+  'save.tv': {
+    host: ['save.tv'],
+    condition: () => document.location.pathname.startsWith('/STV/M/obj/archive/'),
+    products: [
+      {
+        condition: () => document.location.pathname.startsWith('/STV/M/obj/archive/'),
+        type: 'movie',
+        data: function() {
+          var title = null;
+          if(document.querySelector("span[data-bind='text:OrigTitle']")) {
+            title = document.querySelector("span[data-bind='text:OrigTitle']").textContent;
+          } else {
+            title = document.querySelector("h2[data-bind='text:Title']").textContent;
+          }        
+          var year = null;
+          if(document.querySelector("span[data-bind='text:ProductionYear']")) {
+            year = parseInt(document.querySelector("span[data-bind='text:ProductionYear']").textContent);
+          }
+          return [title, year];
+        }
       }
     ]
   }

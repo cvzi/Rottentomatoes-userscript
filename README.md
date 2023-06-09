@@ -51,6 +51,7 @@ and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterbo
  * itunes.apple.com
  * epguides.com
  * ShareTV
+ * save.tv
 
 Screenshot:
 
