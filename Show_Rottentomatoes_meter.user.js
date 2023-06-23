@@ -428,7 +428,7 @@ async function loadMeter (query, type, year) {
     GM.xmlHttpRequest({
       method: 'POST',
       url,
-      data: '{"requests":[{"indexName":"content_rt","query":"' + query.replace('"', '') + '","params":"filters=rtId%20%3E%200%20AND%20isEmsSearchable%20%3D%201&hitsPerPage=20"}]}',
+      data: '{"requests":[{"indexName":"content_rt","query":"' + query.replace('"', '') + '","params":"filters=isEmsSearchable%20%3D%201&hitsPerPage=20"}]}',
       onload: function (response) {
         // Save to algoliaCache
         response.time = (new Date()).toJSON()
@@ -590,6 +590,14 @@ function showMeter (arr, time) {
     zIndex: '5010001',
     fontFamily: 'Helvetica,Arial,sans-serif'
   })
+
+  const CSS = `<style>
+#mcdiv321rotten {
+    transition:bottom 0.7s, height 0.5s;
+}
+</style>`
+
+  $(CSS).appendTo(div)
 
   if (arr === 'ALGOLIA_NOT_CONFIGURED') {
     $('<div>You need to visit <a href="https://www.rottentomatoes.com/">www.rottentomatoes.com</a> at least once to enable the script.</div>').appendTo(main)
@@ -1156,18 +1164,18 @@ const sites = {
       {
         condition: () => document.location.pathname.startsWith('/STV/M/obj/archive/'),
         type: 'movie',
-        data: function() {
-          var title = null;
-          if(document.querySelector("span[data-bind='text:OrigTitle']")) {
-            title = document.querySelector("span[data-bind='text:OrigTitle']").textContent;
+        data: function () {
+          let title = null
+          if (document.querySelector("span[data-bind='text:OrigTitle']")) {
+            title = document.querySelector("span[data-bind='text:OrigTitle']").textContent
           } else {
-            title = document.querySelector("h2[data-bind='text:Title']").textContent;
-          }        
-          var year = null;
-          if(document.querySelector("span[data-bind='text:ProductionYear']")) {
-            year = parseInt(document.querySelector("span[data-bind='text:ProductionYear']").textContent);
+            title = document.querySelector("h2[data-bind='text:Title']").textContent
           }
-          return [title, year];
+          let year = null
+          if (document.querySelector("span[data-bind='text:ProductionYear']")) {
+            year = parseInt(document.querySelector("span[data-bind='text:ProductionYear']").textContent)
+          }
+          return [title, year]
         }
       }
     ]
@@ -1208,6 +1216,29 @@ function main () {
   return dataFound
 }
 
+async function adaptForMetaScript () {
+  // Move this container above the meta container if the meta container is on the right side
+  const rottenC = document.getElementById('mcdiv321rotten')
+  const metaC = document.getElementById('mcdiv123')
+
+  if (!metaC && !rottenC) {
+    return
+  }
+  const rottenBounds = rottenC.getBoundingClientRect()
+
+  let bottom = 0
+  if (metaC) {
+    const metaBounds = metaC.getBoundingClientRect()
+    if (Math.abs(metaBounds.right - rottenBounds.right) < 20 && metaBounds.top > 20) {
+      bottom += metaBounds.height
+    }
+  }
+
+  if (bottom > 0) {
+    rottenC.style.bottom = bottom + 'px'
+  }
+}
+
 (function () {
   if (document.location.href === 'https://www.rottentomatoes.com/') {
     updateAlgolia()
@@ -1231,6 +1262,7 @@ function main () {
     }
   }
   window.setInterval(function () {
+    adaptForMetaScript()
     if (document.location.href !== lastLoc) {
       lastLoc = document.location.href
       $('#mcdiv321rotten').remove()
