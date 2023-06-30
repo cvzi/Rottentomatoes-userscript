@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Show Rottentomatoes meter
-// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com, save.tv
+// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com, save.tv, argenteam.net
 // @namespace   cuzi
 // @updateURL   https://openuserjs.org/meta/cuzi/Show_Rottentomatoes_meter.meta.js
 // @grant       GM_xmlhttpRequest
@@ -65,6 +65,8 @@
 // @match       https://www.sho.com/*
 // @match       https://psa.pm/*
 // @match       https://www.save.tv/*
+// @match       https://argenteam.net/*
+
 // ==/UserScript==
 
 /* global GM, $, unsafeWindow */
@@ -1176,6 +1178,23 @@ const sites = {
             year = parseInt(document.querySelector("span[data-bind='text:ProductionYear']").textContent)
           }
           return [title, year]
+        }
+      }
+    ]
+  },
+  aRGENTeaM: {
+    host: ['argenteam.net'],
+    condition: Always,
+    products: [
+      {
+        condition: () => document.location.pathname.startsWith('/movie/'),
+        type: 'movie',
+        data: function () {
+            var partes = document.title.split("•");
+            var SinArgenteam = partes[1].trim();
+            var SoloTitulo = SinArgenteam.split("(")[0].trim();
+            var Year = SinArgenteam.split("(")[1].split(")")[0];
+            return [SoloTitulo, Year]
         }
       }
     ]
