@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     40
+// @version     41
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     flixster.com
@@ -1190,11 +1190,11 @@ const sites = {
         condition: () => document.location.pathname.startsWith('/movie/'),
         type: 'movie',
         data: function () {
-            var partes = document.title.split("•");
-            var SinArgenteam = partes[1].trim();
-            var SoloTitulo = SinArgenteam.split("(")[0].trim();
-            var Year = SinArgenteam.split("(")[1].split(")")[0];
-            return [SoloTitulo, Year]
+          const partes = document.title.split('•')
+          const SinArgenteam = partes[1].trim()
+          const SoloTitulo = SinArgenteam.split('(')[0].trim()
+          const Year = SinArgenteam.split('(')[1].split(')')[0]
+          return [SoloTitulo, Year]
         }
       }
     ]
