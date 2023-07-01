@@ -52,6 +52,7 @@ and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterbo
  * epguides.com
  * ShareTV
  * save.tv
+ * argenteam.net
 
 Screenshot:
 

@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     41
+// @version     42
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     flixster.com
@@ -1240,7 +1240,7 @@ async function adaptForMetaScript () {
   const rottenC = document.getElementById('mcdiv321rotten')
   const metaC = document.getElementById('mcdiv123')
 
-  if (!metaC && !rottenC) {
+  if (!metaC || !rottenC) {
     return
   }
   const rottenBounds = rottenC.getBoundingClientRect()
