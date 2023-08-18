@@ -13,10 +13,11 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     42
+// @version     43
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     flixster.com
+// @connect     imdb.com
 // @match       https://www.rottentomatoes.com/
 // @match       https://play.google.com/store/movies/details/*
 // @match       https://www.amazon.ca/*
@@ -90,6 +91,7 @@ function minutesSince (time) {
   const seconds = ((new Date()).getTime() - time.getTime()) / 1000
   return seconds > 60 ? parseInt(seconds / 60) + ' min ago' : 'now'
 }
+
 function intersection (setA, setB) {
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
   const _intersection = new Set()
@@ -100,9 +102,53 @@ function intersection (setA, setB) {
   }
   return _intersection
 }
+
+function asyncRequest (data) { // No cache (unlike in the Metacritic userscript)
+  return new Promise(function (resolve, reject) {
+    const defaultHeaders = {
+      Referer: data.url,
+      'User-Agent': navigator.userAgent
+    }
+    const defaultData = {
+      method: 'GET',
+      onload: (response) => resolve(response),
+      onerror: (response) => reject(response)
+    }
+    if ('headers' in data) {
+      data.headers = Object.assign(defaultHeaders, data.headers)
+    } else {
+      data.headers = defaultHeaders
+    }
+    data = Object.assign(defaultData, data)
+    GM.xmlHttpRequest(data)
+  })
+}
+
 const parseLDJSONCache = {}
 function parseLDJSON (keys, condition) {
   if (document.querySelector('script[type="application/ld+json"]')) {
+    const xmlEntitiesElement = document.createElement('div')
+    const xmlEntitiesPattern = /&(?:#x[a-f0-9]+|#[0-9]+|[a-z0-9]+);?/ig
+    const xmlEntities = function (s) {
+      s = s.replace(xmlEntitiesPattern, (m) => {
+        xmlEntitiesElement.innerHTML = m
+        return xmlEntitiesElement.textContent
+      })
+      return s
+    }
+    const decodeXmlEntities = function (jsonObj) {
+      // Traverse through object, decoding all strings
+      if (jsonObj !== null && typeof jsonObj === 'object') {
+        Object.entries(jsonObj).forEach(([key, value]) => {
+          // key is either an array index or object key
+          jsonObj[key] = decodeXmlEntities(value)
+        })
+      } else if (typeof jsonObj === 'string') {
+        return xmlEntities(jsonObj)
+      }
+      return jsonObj
+    }
+
     const data = []
     const scripts = document.querySelectorAll('script[type="application/ld+json"]')
     for (let i = 0; i < scripts.length; i++) {
@@ -134,18 +180,18 @@ function parseLDJSON (keys, condition) {
             for (let j = 0; j < keys.length; j++) {
               r.push(data[i][keys[j]])
             }
-            return r
+            return decodeXmlEntities(r)
           } else if (keys) {
-            return data[i][keys]
+            return decodeXmlEntities(data[i][keys])
           } else if (typeof condition === 'function') {
-            return data[i] // Return whole object
+            return decodeXmlEntities(data[i]) // Return whole object
           }
         }
       } catch (e) {
         continue
       }
     }
-    return data
+    return decodeXmlEntities(data)
   }
   return null
 }
@@ -175,7 +221,7 @@ function askFlixsterEMS (emsId) {
           try {
             data = JSON.parse(response.responseText)
           } catch (e) {
-            console.error('Rottentomatoes flixster ems JSON Error\nURL: ' + url)
+            console.error('ShowRottentomatoes: flixster ems JSON Error\nURL: ' + url)
             console.error(e)
             data = {}
           }
@@ -190,7 +236,7 @@ function askFlixsterEMS (emsId) {
           resolve(data)
         },
         onerror: function (response) {
-          console.error('Rottentomatoes flixster ems GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+          console.error('ShowRottentomatoes: flixster ems GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
           resolve(null)
         }
       })
@@ -252,10 +298,10 @@ function updateAlgolia () {
   }
   if (algoliaSearch.aId) {
     GM.setValue('algoliaSearch', JSON.stringify(algoliaSearch)).then(function () {
-      console.debug('Updated algoliaSearch: ' + JSON.stringify(algoliaSearch))
+      console.debug('ShowRottentomatoes: Updated algoliaSearch: ' + JSON.stringify(algoliaSearch))
     })
   } else {
-    console.debug('algoliaSearch.aId is ' + algoliaSearch.aId)
+    console.debug('ShowRottentomatoes: algoliaSearch.aId is ' + algoliaSearch.aId)
   }
 }
 
@@ -422,7 +468,7 @@ async function loadMeter (query, type, year) {
   // Check cache or request new content
   if (query in algoliaCache) {
     // Use cached response
-    console.debug('Use cached algolia response')
+    console.debug('ShowRottentomatoes: Use cached algolia response')
     handleAlgoliaResponse(algoliaCache[query])
   } else if ('aId' in algoliaSearch && 'sId' in algoliaSearch) {
     // Use algolia.net API
@@ -449,11 +495,11 @@ async function loadMeter (query, type, year) {
         handleAlgoliaResponse(response)
       },
       onerror: function (response) {
-        console.error('Rottentomatoes algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+        console.error('ShowRottentomatoes: algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
       }
     })
   } else {
-    console.error('algoliaSearch not configured')
+    console.error('ShowRottentomatoes: algoliaSearch not configured')
     window.alert(scriptName + ' userscript\n\nYou need to visit www.rottentomatoes.com at least once before the script can work.\n\nThe script needs to read some API keys from the website.')
     showMeter('ALGOLIA_NOT_CONFIGURED', new Date())
   }
@@ -566,7 +612,7 @@ async function handleAlgoliaResponse (response) {
   if (arr) {
     showMeter(arr, new Date(response.time))
   } else {
-    console.debug('Rottentomatoes: No results for ' + current.query)
+    console.debug('ShowRottentomatoes: No results for ' + current.query)
   }
 }
 
@@ -651,56 +697,52 @@ const sites = {
           const e = document.querySelector("meta[property='og:type']")
           if (e && e.content === 'video.movie') {
             return true
-          } else if (document.querySelector('[data-testid="hero-title-block__title"]') && !document.querySelector('[data-testid="hero-subnav-bar-left-block"] a[href*="episodes/"]')) {
-          // New design 2020-12
+          } else if (document.querySelector('[data-testid="hero__pageTitle"]') && !document.querySelector('[data-testid="hero-subnav-bar-left-block"] a[href*="episodes/"]')) {
             return true
           }
           return false
         },
         type: 'movie',
-        data: function () {
+        data: async function () {
           let year = null
-          let name = null
-          let jsonld = null
-          if (document.querySelector('[data-testid="hero-title-block__title"]')) {
-          // New design 2020-12
-            const m = document.title.match(/\s+\((\d{4})\)/)
-            if (m) {
-              year = parseInt(m[1])
+          let ld = null
+          if (document.querySelector('script[type="application/ld+json"]')) {
+            ld = parseLDJSON(['name', 'alternateName', 'datePublished'])
+            if (ld.length > 2) {
+              year = parseInt(ld[2].match(/\d{4}/)[0])
             }
-            return [document.querySelector('[data-testid="hero-title-block__title"]').textContent, year]
           }
-          if (document.querySelector('#titleYear')) {
-            year = parseInt(document.querySelector('#titleYear a').firstChild.textContent)
-          }
-          if (document.querySelector("meta[property='og:title']") && document.querySelector("meta[property='og:title']").content) { // English title, this is the prefered title for Rottentomatoes' search
-            name = document.querySelector("meta[property='og:title']").content.trim()
-            if (name.indexOf('- IMDb') !== -1) {
-              name = name.replace('- IMDb', '').trim()
+          // If the page is not in English or the browser is not in English, request page in English.
+          // Then the title in <h1> will be the English title and Metacritic always uses the English title.
+          if (document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')) {
+            // Set language cookie to English, request current page in English, then restore language cookie or expire it if it didn't exist before
+            const langM = document.cookie.match(/lc-main=([^;]+)/)
+            const langBefore = langM ? langM[0] : ';expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie = 'lc-main=en-US'
+            const response = await asyncRequest({
+              url: document.location.href,
+              headers: {
+                'Accept-Language': 'en-US,en'
+              }
+            }).catch(function (response) {
+              console.warn('ShowRottentomatoes: Error imdb02\nurl=' + document.location.href + '\nstatus=' + response.status)
+            })
+            document.cookie = 'lc-main=' + langBefore
+            // Extract <h1> title
+            const parts = response.responseText.split('</span></h1>')[0].split('>')
+            console.debug('ShowRottentomatoes: Movie title from English page:', parts[parts.length - 1])
+            return [parts[parts.length - 1], year]
+          } else if (ld) {
+            if (ld.length > 1 && ld[1]) {
+              console.debug('ShowRottentomatoes: Movie ld+json alternateName', ld[1], year)
+              return [ld[1], year]
             }
-            name = name.replace(/\(\d{4}\)/, '').trim()
-          }
-          if (document.querySelector('script[type="application/ld+json"]')) { // Original title and release year
-            jsonld = parseLDJSON(['name', 'datePublished'])
-            if (name === null) { name = jsonld[0] }
-            if (year === null) { year = parseInt(jsonld[1].match(/\d{4}/)[0]) }
-          }
-          if (name !== null && year !== null) {
-            return [name, year] // Use original title
-          }
-          if (document.querySelector('.originalTitle') && document.querySelector('.title_wrapper h1')) {
-            return [document.querySelector('.title_wrapper h1').firstChild.textContent.trim(), year] // Use localized title
-          } else if (document.querySelector('h1[itemprop=name]')) { // Movie homepage (New design 2015-12)
-            return [document.querySelector('h1[itemprop=name]').firstChild.textContent.trim(), year]
-          } else if (document.querySelector('*[itemprop=name] a') && document.querySelector('*[itemprop=name] a').firstChild.textContent) { // Subpage of a move
-            return [document.querySelector('*[itemprop=name] a').firstChild.textContent.trim(), year]
-          } else if (document.querySelector('.title-extra[itemprop=name]')) { // Movie homepage: sub-/alternative-/original title
-            return [document.querySelector('.title-extra[itemprop=name]').firstChild.textContent.replace(/"/g, '').trim(), year]
-          } else if (document.querySelector('*[itemprop=name]')) { // Movie homepage (old design)
-            return document.querySelector('*[itemprop=name]').firstChild.textContent.trim()
+            console.debug('ShowRottentomatoes: Movie ld+json name', ld[0], year)
+            return [ld[0], year]
           } else {
-            const rm = document.title.match(/(.+?)\s+(\(\d+\))? - IMDb/)
-            return [rm[1], rm[2]]
+            const m = document.title.match(/(.+?)\s+(\((\d+)\))? - IMDb/)
+            console.debug('ShowRottentomatoes: Movie <title>', [m[1], m[3]])
+            return [m[1], parseInt(m[3])]
           }
         }
       },
@@ -710,35 +752,52 @@ const sites = {
           if (e && e.content === 'video.tv_show') {
             return true
           } else if (document.querySelector('[data-testid="hero-subnav-bar-left-block"] a[href*="episodes/"]')) {
-          // New design 2020-12
             return true
           }
           return false
         },
         type: 'tv',
-        data: function () {
+        data: async function () {
           let year = null
-          if (document.querySelector('[data-testid="hero-title-block__title"]')) {
-          // New design 2020-12
-            const m = document.title.match(/\s(\d{4})(\S\d{4}?)?/)
-            if (m) {
-              year = parseInt(m[1])
+          let ld = null
+          if (document.querySelector('script[type="application/ld+json"]')) {
+            ld = parseLDJSON(['name', 'alternateName', 'datePublished'])
+            if (ld.length > 2) {
+              year = parseInt(ld[2].match(/\d{4}/)[0])
             }
-            return [document.querySelector('[data-testid="hero-title-block__title"]').textContent, year]
-          } else if (document.querySelector('*[itemprop=name]')) {
-            const m = document.title.match(/\s(\d{4})(\S\d{4}?)?/)
-            if (m) {
-              year = parseInt(m[1])
+          }
+
+          // If the page is not in English or the browser is not in English, request page in English.
+          // Then the title in <h1> will be the English title and Metacritic always uses the English title.
+          if (document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')) {
+            // Set language cookie to English, request current page in English, then restore language cookie or expire it if it didn't exist before
+            const langM = document.cookie.match(/lc-main=([^;]+)/)
+            const langBefore = langM ? langM[0] : ';expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie = 'lc-main=en-US'
+            const response = await asyncRequest({
+              url: document.location.href,
+              headers: {
+                'Accept-Language': 'en-US,en'
+              }
+            }).catch(function (response) {
+              console.warn('ShowRottentomatoes: Error imdb03\nurl=' + document.location.href + '\nstatus=' + response.status)
+            })
+            document.cookie = 'lc-main=' + langBefore
+            // Extract <h1> title
+            const parts = response.responseText.split('</span></h1>')[0].split('>')
+            console.debug('ShowRottentomatoes: TV title from English page:', parts[parts.length - 1])
+            return [parts[parts.length - 1], year]
+          } else if (ld) {
+            if (ld.length > 1 && ld[1]) {
+              console.debug('ShowRottentomatoes: TV ld+json alternateName', ld[1], year)
+              return [ld[1], year]
             }
-            return [document.querySelector('*[itemprop=name]').textContent, year]
-          } else if (document.querySelector('script[type="application/ld+json"]')) {
-            const jsonld = JSON.parse(document.querySelector('script[type="application/ld+json"]').innerText)
-            try {
-              year = parseInt(jsonld.datePublished.match(/\d{4}/)[0])
-            } catch (e) {}
-            return [jsonld.name, year]
+            console.debug('ShowRottentomatoes: TV ld+json name', ld[0], year)
+            return [ld[0], year]
           } else {
-            return [document.title.match(/(.+?)\s+\(TV/)[1], year]
+            const m = document.title.match(/(.+?)\s+\(.+(\d{4}).+/)
+            console.debug('ShowRottentomatoes: TV <title>', [m[1], m[2]])
+            return [m[1], parseInt(m[2])]
           }
         }
       }
@@ -1201,7 +1260,7 @@ const sites = {
   }
 }
 
-function main () {
+async function main () {
   let dataFound = false
 
   for (const name in sites) {
@@ -1212,7 +1271,7 @@ function main () {
           // Try to retrieve item name from page
           let data
           try {
-            data = site.products[i].data()
+            data = await site.products[i].data()
           } catch (e) {
             data = false
             console.error(`ShowRottentomatoes: Error in data() of site='${name}', type='${site.products[i].type}'`)
@@ -1258,23 +1317,23 @@ async function adaptForMetaScript () {
   }
 }
 
-(function () {
+(async function () {
   if (document.location.href === 'https://www.rottentomatoes.com/') {
     updateAlgolia()
   }
 
-  const firstRunResult = main()
+  const firstRunResult = await main()
   let lastLoc = document.location.href
   let lastContent = document.body.innerText
   let lastCounter = 0
-  function newpage () {
+  async function newpage () {
     if (lastContent === document.body.innerText && lastCounter < 15) {
       window.setTimeout(newpage, 500)
       lastCounter++
     } else {
       lastContent = document.body.innerText
       lastCounter = 0
-      const re = main()
+      const re = await main()
       if (!re) { // No page matched or no data found
         window.setTimeout(newpage, 1000)
       }
