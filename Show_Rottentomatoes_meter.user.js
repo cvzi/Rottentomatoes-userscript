@@ -1331,7 +1331,7 @@ async function main () {
 
   for (const name in sites) {
     const site = sites[name]
-    if (site.host.some(function (e) { return ~this.indexOf(e) }, document.location.hostname) && site.condition()) {
+    if (site.host.some(function (e) { return ~this.indexOf(e) || e === '*' }, document.location.hostname) && site.condition()) {
       for (let i = 0; i < site.products.length; i++) {
         if (site.products[i].condition()) {
           // Try to retrieve item name from page
