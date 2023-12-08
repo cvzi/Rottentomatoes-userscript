@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     44
+// @version     45
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     flixster.com
@@ -606,7 +606,7 @@ async function handleAlgoliaResponse (response) {
     return b.matchQuality - a.matchQuality
   })
 
-  if (arr.length > 0 && arr[0].meterScore && arr[0].meterScore >= 70 && arr[0].meterClass !== 'certified_fresh') {
+  if (arr.length > 0 && arr[0].meterScore) {
     // Get more details for first result
     arr[0] = await addFlixsterEMS(arr[0])
   }
