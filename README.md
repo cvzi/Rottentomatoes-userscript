@@ -53,6 +53,7 @@ and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterbo
  * ShareTV
  * save.tv
  * argenteam.net
+ * trakt.tv
 
 Screenshot:
 
