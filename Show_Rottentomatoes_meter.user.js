@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     46
+// @version     47
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     flixster.com
@@ -90,6 +90,9 @@ const emojiPopcorn = '\uD83C\uDF7F'
 const emojiGreenSalad = '\uD83E\uDD57'
 const emojiNauseated = '\uD83E\uDD22'
 
+// Detect dark theme of darkreader.org extension or normal css dark theme from browser
+const darkTheme = ('darkreaderScheme' in document.documentElement.dataset && document.documentElement.dataset.darkreaderScheme) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
 function minutesSince (time) {
   const seconds = ((new Date()).getTime() - time.getTime()) / 1000
   return seconds > 60 ? parseInt(seconds / 60) + ' min ago' : 'now'
@@ -123,6 +126,7 @@ function asyncRequest (data) { // No cache (unlike in the Metacritic userscript)
       data.headers = defaultHeaders
     }
     data = Object.assign(defaultData, data)
+    console.debug(`${scriptName}: GM.xmlHttpRequest`, data)
     GM.xmlHttpRequest(data)
   })
 }
@@ -224,7 +228,7 @@ function askFlixsterEMS (emsId) {
           try {
             data = JSON.parse(response.responseText)
           } catch (e) {
-            console.error('ShowRottentomatoes: flixster ems JSON Error\nURL: ' + url)
+            console.error(`${scriptName}: flixster ems JSON Error\nURL: ${url}`)
             console.error(e)
             data = {}
           }
@@ -239,7 +243,7 @@ function askFlixsterEMS (emsId) {
           resolve(data)
         },
         onerror: function (response) {
-          console.error('ShowRottentomatoes: flixster ems GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+          console.error(`${scriptName}: flixster ems GM.xmlHttpRequest Error: ${response.status}\nURL: ${url}\nResponse:\n${response.responseText}`)
           resolve(null)
         }
       })
@@ -301,17 +305,17 @@ function updateAlgolia () {
   }
   if (algoliaSearch.aId) {
     GM.setValue('algoliaSearch', JSON.stringify(algoliaSearch)).then(function () {
-      console.debug('ShowRottentomatoes: Updated algoliaSearch: ' + JSON.stringify(algoliaSearch))
+      console.debug(`${scriptName}: Updated algoliaSearch: ${JSON.stringify(algoliaSearch)}`)
     })
   } else {
-    console.debug('ShowRottentomatoes: algoliaSearch.aId is ' + algoliaSearch.aId)
+    console.debug(`${scriptName}: algoliaSearch.aId is ${algoliaSearch.aId}`)
   }
 }
 
 function meterBar (data) {
   // Create the "progress" bar with the meter score
   let barColor = 'grey'
-  let bgColor = '#ECE4B5'
+  let bgColor = darkTheme ? '#3e3e3e' : '#ECE4B5'
   let color = 'black'
   let width = 0
   let textInside = ''
@@ -386,7 +390,7 @@ function audienceBar (data) {
   }
 
   let barColor = 'grey'
-  let bgColor = '#ECE4B5'
+  let bgColor = darkTheme ? '#3e3e3e' : '#ECE4B5'
   let color = 'black'
   let width = 0
   let textInside = ''
@@ -471,7 +475,7 @@ async function loadMeter (query, type, year) {
   // Check cache or request new content
   if (query in algoliaCache) {
     // Use cached response
-    console.debug('ShowRottentomatoes: Use cached algolia response')
+    console.debug(`${scriptName}: Use cached algolia response`)
     handleAlgoliaResponse(algoliaCache[query])
   } else if ('aId' in algoliaSearch && 'sId' in algoliaSearch) {
     // Use algolia.net API
@@ -498,11 +502,11 @@ async function loadMeter (query, type, year) {
         handleAlgoliaResponse(response)
       },
       onerror: function (response) {
-        console.error('ShowRottentomatoes: algoliaSearch GM.xmlHttpRequest Error: ' + response.status + '\nURL: ' + url + '\nResponse:\n' + response.responseText)
+        console.error(`${scriptName}: algoliaSearch GM.xmlHttpRequest Error: ${response.status}\nURL: ${url}\nResponse:\n${response.responseText}`)
       }
     })
   } else {
-    console.error('ShowRottentomatoes: algoliaSearch not configured')
+    console.error(`${scriptName}: algoliaSearch not configured`)
     window.alert(scriptName + ' userscript\n\nYou need to visit www.rottentomatoes.com at least once before the script can work.\n\nThe script needs to read some API keys from the website.')
     showMeter('ALGOLIA_NOT_CONFIGURED', new Date())
   }
@@ -615,7 +619,7 @@ async function handleAlgoliaResponse (response) {
   if (arr) {
     showMeter(arr, new Date(response.time))
   } else {
-    console.debug('ShowRottentomatoes: No results for ' + current.query)
+    console.debug(`${scriptName}: No results for ${current.query}`)
   }
 }
 
@@ -632,11 +636,11 @@ function showMeter (arr, time) {
     maxWidth: 400,
     maxHeight: '95%',
     overflow: 'auto',
-    backgroundColor: '#fff',
-    border: '2px solid #bbb',
+    backgroundColor: darkTheme ? '#262626' : 'white',
+    border: darkTheme ? '2px solid #444' : '2px solid #bbb',
     borderRadius: ' 6px',
     boxShadow: '0 0 3px 3px rgba(100, 100, 100, 0.2)',
-    color: '#000',
+    color: darkTheme ? 'white' : 'black',
     padding: ' 3px',
     zIndex: '5010001',
     fontFamily: 'Helvetica,Arial,sans-serif'
@@ -715,26 +719,40 @@ const sites = {
               year = parseInt(ld[2].match(/\d{4}/)[0])
             }
           }
+
+          const pageNotEnglish = document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')
+          const pageNotMovieHomePage = !document.title.match(/(.+?)\s+(\((\d+)\))? - IMDb/)
+
           // If the page is not in English or the browser is not in English, request page in English.
           // Then the title in <h1> will be the English title and Metacritic always uses the English title.
-          if (document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')) {
+          if (pageNotEnglish || pageNotMovieHomePage) {
             // Set language cookie to English, request current page in English, then restore language cookie or expire it if it didn't exist before
+            const imdbID = document.location.pathname.match(/\/title\/(\w+)/)[1]
+            const homePageUrl = 'https://www.imdb.com/title/' + imdbID + '/?ref_=nv_sr_1'
             const langM = document.cookie.match(/lc-main=([^;]+)/)
             const langBefore = langM ? langM[0] : ';expires=Thu, 01 Jan 1970 00:00:01 GMT'
             document.cookie = 'lc-main=en-US'
             const response = await asyncRequest({
-              url: document.location.href,
+              url: homePageUrl,
               headers: {
                 'Accept-Language': 'en-US,en'
               }
             }).catch(function (response) {
-              console.warn('ShowRottentomatoes: Error imdb02\nurl=' + document.location.href + '\nstatus=' + response.status)
+              console.warn('ShowRottentomatoes: Error imdb02\nurl=' + homePageUrl + '\nstatus=' + response.status)
             })
             document.cookie = 'lc-main=' + langBefore
             // Extract <h1> title
             const parts = response.responseText.split('</span></h1>')[0].split('>')
-            console.debug('ShowRottentomatoes: Movie title from English page:', parts[parts.length - 1])
-            return [parts[parts.length - 1], year]
+            const title = parts[parts.length - 1]
+            if (!year) {
+              // extract year
+              const yearM = response.responseText.match(/href="\/title\/\w+\/releaseinfo.*">(\d{4})<\/a>/)
+              if (yearM) {
+                year = yearM[1]
+              }
+            }
+            console.debug('ShowRottentomatoes: Movie title from English page:', title, year)
+            return [title, year]
           } else if (ld) {
             if (ld.length > 1 && ld[1]) {
               console.debug('ShowRottentomatoes: Movie ld+json alternateName', ld[1], year)
@@ -743,7 +761,7 @@ const sites = {
             console.debug('ShowRottentomatoes: Movie ld+json name', ld[0], year)
             return [ld[0], year]
           } else {
-            const m = document.title.match(/(.+?)\s+(\((\d+)\))? - IMDb/)
+            const m = document.title.match(/(.+?)\s+(\((\d+)\))? - /)
             console.debug('ShowRottentomatoes: Movie <title>', [m[1], m[3]])
             return [m[1], parseInt(m[3])]
           }
@@ -770,26 +788,39 @@ const sites = {
             }
           }
 
+          const pageNotEnglish = document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')
+          const pageNotMovieHomePage = !document.title.match(/(.+?)\s+\(.+(\d{4})–.{0,4}\) - IMDb/)
+
           // If the page is not in English or the browser is not in English, request page in English.
           // Then the title in <h1> will be the English title and Metacritic always uses the English title.
-          if (document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')) {
+          if (pageNotEnglish || pageNotMovieHomePage) {
+            const imdbID = document.location.pathname.match(/\/title\/(\w+)/)[1]
+            const homePageUrl = 'https://www.imdb.com/title/' + imdbID + '/?ref_=nv_sr_1'
             // Set language cookie to English, request current page in English, then restore language cookie or expire it if it didn't exist before
             const langM = document.cookie.match(/lc-main=([^;]+)/)
             const langBefore = langM ? langM[0] : ';expires=Thu, 01 Jan 1970 00:00:01 GMT'
             document.cookie = 'lc-main=en-US'
             const response = await asyncRequest({
-              url: document.location.href,
+              url: homePageUrl,
               headers: {
                 'Accept-Language': 'en-US,en'
               }
             }).catch(function (response) {
-              console.warn('ShowRottentomatoes: Error imdb03\nurl=' + document.location.href + '\nstatus=' + response.status)
+              console.warn('ShowRottentomatoes: Error imdb03\nurl=' + homePageUrl + '\nstatus=' + response.status)
             })
             document.cookie = 'lc-main=' + langBefore
             // Extract <h1> title
             const parts = response.responseText.split('</span></h1>')[0].split('>')
-            console.debug('ShowRottentomatoes: TV title from English page:', parts[parts.length - 1])
-            return [parts[parts.length - 1], year]
+            const title = parts[parts.length - 1]
+            if (!year) {
+              // extract year
+              const yearM = response.responseText.match(/href="\/title\/\w+\/releaseinfo.*">(\d{4})/)
+              if (yearM) {
+                year = yearM[1]
+              }
+            }
+            console.debug('ShowRottentomatoes: TV title from English page:', title, year)
+            return [title, year]
           } else if (ld) {
             if (ld.length > 1 && ld[1]) {
               console.debug('ShowRottentomatoes: TV ld+json alternateName', ld[1], year)
@@ -1361,12 +1392,16 @@ async function main () {
             data = await site.products[i].data()
           } catch (e) {
             data = false
-            console.error(`ShowRottentomatoes: Error in data() of site='${name}', type='${site.products[i].type}'`)
+            console.error(`${scriptName}: Error in data() of site='${name}', type='${site.products[i].type}'`)
             console.error(e)
           }
           if (data) {
-            if (Array.isArray(data) && data[1]) {
-              loadMeter(data[0].trim(), site.products[i].type, parseInt(data[1]))
+            if (Array.isArray(data)) {
+              if (data[1]) {
+                loadMeter(data[0].trim(), site.products[i].type, parseInt(data[1]))
+              } else {
+                loadMeter(data[0].trim(), site.products[i].type)
+              }
             } else {
               loadMeter(data.trim(), site.products[i].type)
             }
