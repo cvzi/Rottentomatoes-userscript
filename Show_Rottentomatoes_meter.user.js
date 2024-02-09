@@ -74,6 +74,7 @@
 // ==/UserScript==
 
 /* global GM, $, unsafeWindow */
+/* jshint asi: true, esversion: 8 */
 
 const scriptName = 'Show Rottentomatoes meter'
 const baseURL = 'https://www.rottentomatoes.com'
