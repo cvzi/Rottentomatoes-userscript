@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Show Rottentomatoes meter
-// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com, save.tv, argenteam.net
+// @description Show Rotten Tomatoes score on imdb.com, metacritic.com, letterboxd.com, BoxOfficeMojo, serienjunkies.de, Amazon, Google Play, allmovie.com, Wikipedia, themoviedb.org, movies.com, tvmaze.com, tvguide.com, followshows.com, thetvdb.com, tvnfo.com, save.tv
 // @namespace   cuzi
 // @updateURL   https://openuserjs.org/meta/cuzi/Show_Rottentomatoes_meter.meta.js
 // @grant       GM_xmlhttpRequest
@@ -13,7 +13,7 @@
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     47
+// @version     48
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     flixster.com
@@ -51,7 +51,7 @@
 // @match       https://followshows.com/show/*
 // @match       https://thetvdb.com/series/*
 // @match       https://thetvdb.com/movies/*
-// @match       https://tvnfo.com/s/*
+// @match       https://tvnfo.com/tv/*
 // @match       https://www.metacritic.com/movie/*
 // @match       https://www.metacritic.com/tv/*
 // @match       https://www.nme.com/reviews/*
@@ -59,16 +59,13 @@
 // @match       https://epguides.com/*
 // @match       https://www.epguides.com/*
 // @match       https://www.cc.com/*
-// @match       https://www.tvhoard.com/*
 // @match       https://www.amc.com/*
 // @match       https://www.amcplus.com/*
 // @match       https://rlsbb.ru/*/
 // @match       https://www.sho.com/*
 // @match       https://www.gog.com/*
-// @match       https://psa.pm/*
 // @match       https://psa.wf/*
 // @match       https://www.save.tv/*
-// @match       https://argenteam.net/*
 // @match       https://www.wikiwand.com/*
 // @match       https://trakt.tv/*
 // ==/UserScript==
@@ -1095,13 +1092,13 @@ const sites = {
   },
   TVNfo: {
     host: ['tvnfo.com'],
-    condition: () => document.querySelector('.ui.breadcrumb a[href*="/series"]'),
+    condition: () => document.querySelector('#title #name'),
     products: [{
       condition: Always,
       type: 'tv',
       data: function () {
-        const years = document.querySelector('#title h1 .years').textContent.trim()
-        const title = document.querySelector('#title h1').textContent.replace(years, '').trim()
+        const years = document.querySelector('#title #years').textContent.trim()
+        const title = document.querySelector('#title #name').textContent.replace(years, '').trim()
         let year = null
         if (years) {
           try {
@@ -1184,22 +1181,6 @@ const sites = {
       data: () => document.title.match(/(.+?)\s+-\s+Series/)[1]
     }]
   },
-  TVHoard: {
-    host: ['tvhoard.com'],
-    condition: () => document.location.pathname.split('/').length > 3 &&
-      document.location.pathname.split('/')[1] === 'titles' &&
-       document.querySelector('title-primary-details-panel h1.title a'),
-    products: [{
-      condition: () => !document.querySelector('title-secondary-details-panel .detail.seasons'),
-      type: 'movie',
-      data: () => [document.querySelector('app-root title-page-container h1.title a').textContent.trim(), document.querySelector('app-root title-page-container title-primary-details-panel h1.title .year').textContent.trim().substring(1, 5)]
-    },
-    {
-      condition: () => document.querySelector('title-secondary-details-panel .detail.seasons'),
-      type: 'tv',
-      data: () => document.querySelector('title-primary-details-panel h1.title a').textContent.trim()
-    }]
-  },
   AMC: {
     host: ['amc.com'],
     condition: () => document.location.pathname.startsWith('/shows/'),
@@ -1262,7 +1243,7 @@ const sites = {
     }]
   },
   psapm: {
-    host: ['psa.pm', 'psa.wf'],
+    host: ['psa.wf'],
     condition: Always,
     products: [
       {
@@ -1304,23 +1285,6 @@ const sites = {
             year = parseInt(document.querySelector("span[data-bind='text:ProductionYear']").textContent)
           }
           return [title, year]
-        }
-      }
-    ]
-  },
-  aRGENTeaM: {
-    host: ['argenteam.net'],
-    condition: Always,
-    products: [
-      {
-        condition: () => document.location.pathname.startsWith('/movie/'),
-        type: 'movie',
-        data: function () {
-          const partes = document.title.split('•')
-          const SinArgenteam = partes[1].trim()
-          const SoloTitulo = SinArgenteam.split('(')[0].trim()
-          const Year = SinArgenteam.split('(')[1].split(')')[0]
-          return [SoloTitulo, Year]
         }
       }
     ]
