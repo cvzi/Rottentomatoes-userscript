@@ -17,6 +17,10 @@ Tested with Firefox/**Tampermonkey** and Chrome/**Tampermonkey**.
 I develop a similar script for the [Metacritic](https://www.metacritic.com/) score, see [cvzi/Metacritic-userscript](https://github.com/cvzi/Metacritic-userscript/)  
 and for the [Letterboxd.com](https://letterboxd.com/) rating, see [cvzi/Letterboxd-userscript](https://github.com/cvzi/Letterboxd-userscript/)
 
+## [Trakt.tv addon](https://greasyfork.org/en/scripts/498861-show-rottentomatoes-meter-trakt-ui-addon):
+There is a third-party add-on script, that integrates the score into trakt.tv header:  
+[**Click here for install**](https://update.greasyfork.org/scripts/498861/Show%20Rottentomatoes%20meter%20-%20Trakt%20UI%20Addon.user.js)
+
 ## Symbols:
 
 |Icon | rottentomatoes    | https://www.rottentomatoes.com/about#whatisthetomatometer  |
