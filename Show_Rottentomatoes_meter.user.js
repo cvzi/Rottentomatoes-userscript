@@ -17,7 +17,6 @@
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.fandango.com
-// @connect     flixster.com
 // @connect     imdb.com
 // @match       https://www.rottentomatoes.com/*
 // @match       https://play.google.com/store/movies/details/*
@@ -80,7 +79,6 @@ const baseURL = 'https://www.rottentomatoes.com'
 const baseURLOpenTab = baseURL + '/search/?search={query}'
 const algoliaURL = 'https://{domain}-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent={agent}&x-algolia-api-key={sId}&x-algolia-application-id={aId}'
 const algoliaAgent = 'Algolia for JavaScript (4.12.0); Browser (lite)'
-const flixsterEMSURL = 'https://flixster.com/api/ems/v2/emsId/{emsId}'
 const cacheExpireAfterHours = 4
 const emojiTomato = String.fromCodePoint(0x1F345)
 const emojiGreenApple = String.fromCodePoint(0x1F34F)
@@ -205,97 +203,6 @@ function parseLDJSON (keys, condition) {
     return decodeXmlEntities(data)
   }
   return null
-}
-
-function askFlixsterEMS (emsId) {
-  return new Promise(function flixsterEMSRequest (resolve) {
-    GM.getValue('flixsterEmsCache', '{}').then(function (s) {
-      const flixsterEmsCache = JSON.parse(s)
-
-      // Delete algoliaCached values, that are expired
-      for (const prop in flixsterEmsCache) {
-        if ((new Date()).getTime() - (new Date(flixsterEmsCache[prop].time)).getTime() > cacheExpireAfterHours * 60 * 60 * 1000) {
-          delete flixsterEmsCache[prop]
-        }
-      }
-
-      // Check cache or request new content
-      if (emsId in flixsterEmsCache) {
-        return resolve(flixsterEmsCache[emsId])
-      }
-      const url = flixsterEMSURL.replace('{emsId}', encodeURIComponent(emsId))
-      GM.xmlHttpRequest({
-        method: 'GET',
-        url,
-        onload: function (response) {
-          let data = null
-          try {
-            data = JSON.parse(response.responseText)
-          } catch (e) {
-            console.error(`${scriptName}: flixster ems JSON Error\nURL: ${url}`)
-            console.error(e)
-            data = {}
-          }
-
-          // Save to flixsterEmsCache
-          data.time = (new Date()).toJSON()
-
-          flixsterEmsCache[emsId] = data
-
-          GM.setValue('flixsterEmsCache', JSON.stringify(flixsterEmsCache))
-
-          resolve(data)
-        },
-        onerror: function (response) {
-          console.error(`${scriptName}: flixster ems GM.xmlHttpRequest Error: ${response.status}\nURL: ${url}\nResponse:\n${response.responseText}`)
-          resolve(null)
-        }
-      })
-    })
-  })
-}
-async function addFlixsterEMS (orgData) {
-  const flixsterData = await askFlixsterEMS(orgData.emsId)
-  if (!flixsterData || !('tomatometer' in flixsterData)) {
-    return orgData
-  }
-  if ('certifiedFresh' in flixsterData.tomatometer && flixsterData.tomatometer.certifiedFresh) {
-    orgData.meterClass = 'certified_fresh'
-  }
-  if ('numReviews' in flixsterData.tomatometer && flixsterData.tomatometer.numReviews) {
-    orgData.numReviews = flixsterData.tomatometer.numReviews
-    if ('freshCount' in flixsterData.tomatometer && flixsterData.tomatometer.freshCount != null) {
-      orgData.freshCount = flixsterData.tomatometer.freshCount
-    }
-    if ('rottenCount' in flixsterData.tomatometer && flixsterData.tomatometer.rottenCount != null) {
-      orgData.rottenCount = flixsterData.tomatometer.rottenCount
-    }
-  }
-  if ('consensus' in flixsterData.tomatometer && flixsterData.tomatometer.consensus) {
-    orgData.consensus = flixsterData.tomatometer.consensus
-  }
-  if ('avgScore' in flixsterData.tomatometer && flixsterData.tomatometer.avgScore != null) {
-    orgData.avgScore = flixsterData.tomatometer.avgScore
-  }
-  if ('userRatingSummary' in flixsterData) {
-    if ('scoresCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.scoresCount) {
-      orgData.audienceCount = flixsterData.userRatingSummary.scoresCount
-    } else if ('dtlScoreCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.dtlScoreCount) {
-      orgData.audienceCount = flixsterData.userRatingSummary.dtlScoreCount
-    }
-    if ('wtsCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.wtsCount) {
-      orgData.audienceWantToSee = flixsterData.userRatingSummary.wtsCount
-    } else if ('dtlWtsCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.dtlWtsCount) {
-      orgData.audienceWantToSee = flixsterData.userRatingSummary.dtlWtsCount
-    }
-    if ('reviewCount' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.reviewCount) {
-      orgData.audienceReviewCount = flixsterData.userRatingSummary.reviewCount
-    }
-    if ('avgScore' in flixsterData.userRatingSummary && flixsterData.userRatingSummary.avgScore) {
-      orgData.audienceAvgScore = flixsterData.userRatingSummary.avgScore
-    }
-  }
-  return orgData
 }
 
 function updateAlgolia () {
@@ -615,11 +522,6 @@ async function handleAlgoliaResponse (response) {
     return b.matchQuality - a.matchQuality
   })
 
-  if (arr.length > 0 && arr[0].meterScore) {
-    // Get more details for first result
-    arr[0] = await addFlixsterEMS(arr[0])
-  }
-
   if (arr.length > 0) {
     showMeter(arr, new Date(response.time))
   } else {
@@ -743,7 +645,7 @@ const sites = {
             }).catch(function (response) {
               console.warn('ShowRottentomatoes: Error imdb02\nurl=' + homePageUrl + '\nstatus=' + response.status)
             })
-            if (!response.responseText) { throw `${scriptName}: Too many requests. AWS challenge protection kicked in` }
+            if (!response.responseText) { throw new Error(`${scriptName}: Too many requests. AWS challenge protection kicked in`) }
             // Extract <h1> title
             const parts = response.responseText.split('</span></h1>')[0].split('>')
             const title = parts[parts.length - 1]
@@ -806,7 +708,7 @@ const sites = {
             }).catch(function (response) {
               console.warn('ShowRottentomatoes: Error imdb03\nurl=' + homePageUrl + '\nstatus=' + response.status)
             })
-            if (!response.responseText) { throw `${scriptName}: Too many requests. AWS challenge protection kicked in` }
+            if (!response.responseText) { throw new Error(`${scriptName}: Too many requests. AWS challenge protection kicked in`) }
             // Extract <h1> title
             const parts = response.responseText.split('</span></h1>')[0].split('>')
             const title = parts[parts.length - 1]
