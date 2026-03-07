@@ -37,7 +37,6 @@
 // @match       https://www.imdb.com/title/*
 // @match       https://www.imdb.com/*/title/*
 // @match       https://www.serienjunkies.de/*
-// @match       http://www.serienjunkies.de/*
 // @match       https://www.boxofficemojo.com/movies/*
 // @match       https://www.boxofficemojo.com/release/*
 // @match       https://www.allmovie.com/movie/*
@@ -781,7 +780,7 @@ const sites = {
     host: ['www.serienjunkies.de'],
     condition: Always,
     products: [{
-      condition: () => document.getElementById('serienlinksbreit2aktuell'),
+      condition: () => document.querySelector('.sjf-show-menu-container'),
       type: 'tv',
       data: () => document.querySelector('h1').textContent.trim()
     },
@@ -963,15 +962,9 @@ const sites = {
     host: ['tvguide.com'],
     condition: Always,
     products: [{
-      condition: () => document.location.pathname.startsWith('/tvshows/'),
+      condition: () => document.location.pathname.startsWith('/tvshows/') && parseLDJSON('mainEntity')['@type'] === 'TVSeries',
       type: 'tv',
-      data: function () {
-        if (document.querySelector('meta[itemprop=name]')) {
-          return document.querySelector('meta[itemprop=name]').content
-        } else {
-          return document.querySelector("meta[property='og:title']").content.split('|')[0]
-        }
-      }
+      data: () => parseLDJSON('mainEntity')['name']
     }]
   },
   followshows: {
