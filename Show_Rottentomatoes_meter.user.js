@@ -757,10 +757,6 @@ const sites = {
             console.debug('ShowRottentomatoes: Movie title from English page:', title, year)
             return [title, year]
           } else if (ld) {
-            if (ld.length > 1 && ld[1]) {
-              console.debug('ShowRottentomatoes: Movie ld+json alternateName', ld[1], year)
-              return [ld[1], year]
-            }
             console.debug('ShowRottentomatoes: Movie ld+json name', ld[0], year)
             return [ld[0], year]
           } else {
@@ -825,10 +821,6 @@ const sites = {
             console.debug('ShowRottentomatoes: TV title from English page:', title, year)
             return [title, year]
           } else if (ld) {
-            if (ld.length > 1 && ld[1]) {
-              console.debug('ShowRottentomatoes: TV ld+json alternateName', ld[1], year)
-              return [ld[1], year]
-            }
             console.debug('ShowRottentomatoes: TV ld+json name', ld[0], year)
             return [ld[0], year]
           } else {
