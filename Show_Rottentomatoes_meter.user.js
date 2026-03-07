@@ -36,6 +36,7 @@
 // @match       https://www.amazon.in/*
 // @match       https://www.amazon.it/*
 // @match       https://www.imdb.com/title/*
+// @match       https://www.imdb.com/*/title/*
 // @match       https://www.serienjunkies.de/*
 // @match       http://www.serienjunkies.de/*
 // @match       https://www.boxofficemojo.com/movies/*
@@ -732,9 +733,8 @@ const sites = {
             // Set language cookie to English, request current page in English, then restore language cookie or expire it if it didn't exist before
             const imdbID = document.location.pathname.match(/\/title\/(\w+)/)[1]
             const homePageUrl = 'https://www.imdb.com/title/' + imdbID + '/?ref_=nv_sr_1'
-            const langM = document.cookie.match(/lc-main=([^;]+)/)
-            const langBefore = langM ? langM[0] : ';expires=Thu, 01 Jan 1970 00:00:01 GMT'
-            document.cookie = 'lc-main=en-US'
+            document.cookie = 'international-seo=; domain=.imdb.com; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie = 'lc-main=en-US; path=/title/' + imdbID + '; max-age=1'
             const response = await asyncRequest({
               url: homePageUrl,
               headers: {
@@ -743,7 +743,7 @@ const sites = {
             }).catch(function (response) {
               console.warn('ShowRottentomatoes: Error imdb02\nurl=' + homePageUrl + '\nstatus=' + response.status)
             })
-            document.cookie = 'lc-main=' + langBefore
+            if (!response.responseText) { throw `${scriptName}: Too many requests. AWS challenge protection kicked in` }
             // Extract <h1> title
             const parts = response.responseText.split('</span></h1>')[0].split('>')
             const title = parts[parts.length - 1]
@@ -796,9 +796,8 @@ const sites = {
             const imdbID = document.location.pathname.match(/\/title\/(\w+)/)[1]
             const homePageUrl = 'https://www.imdb.com/title/' + imdbID + '/?ref_=nv_sr_1'
             // Set language cookie to English, request current page in English, then restore language cookie or expire it if it didn't exist before
-            const langM = document.cookie.match(/lc-main=([^;]+)/)
-            const langBefore = langM ? langM[0] : ';expires=Thu, 01 Jan 1970 00:00:01 GMT'
-            document.cookie = 'lc-main=en-US'
+            document.cookie = 'international-seo=; domain=.imdb.com; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT'
+            document.cookie = 'lc-main=en-US; path=/title/' + imdbID + '; max-age=1'
             const response = await asyncRequest({
               url: homePageUrl,
               headers: {
@@ -807,7 +806,7 @@ const sites = {
             }).catch(function (response) {
               console.warn('ShowRottentomatoes: Error imdb03\nurl=' + homePageUrl + '\nstatus=' + response.status)
             })
-            document.cookie = 'lc-main=' + langBefore
+            if (!response.responseText) { throw `${scriptName}: Too many requests. AWS challenge protection kicked in` }
             // Extract <h1> title
             const parts = response.responseText.split('</span></h1>')[0].split('>')
             const title = parts[parts.length - 1]
