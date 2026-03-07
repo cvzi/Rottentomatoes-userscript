@@ -19,7 +19,7 @@
 // @connect     www.fandango.com
 // @connect     flixster.com
 // @connect     imdb.com
-// @match       https://www.rottentomatoes.com/
+// @match       https://www.rottentomatoes.com/*
 // @match       https://play.google.com/store/movies/details/*
 // @match       https://www.amazon.ca/*
 // @match       https://www.amazon.co.jp/*
@@ -1411,7 +1411,7 @@ async function adaptForMetaScript () {
 }
 
 (async function () {
-  if (document.location.href === 'https://www.rottentomatoes.com/') {
+  if (document.location.hostname.includes('rottentomatoes.com')) {
     updateAlgolia()
   }
 
