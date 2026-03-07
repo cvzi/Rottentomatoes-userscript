@@ -724,7 +724,7 @@ const sites = {
           }
 
           const pageNotEnglish = document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')
-          const pageNotMovieHomePage = !document.title.match(/(.+?)\s+(\((\d+)\))? - IMDb/)
+          const pageNotMovieHomePage = !document.title.match(/(.+?)(?:\s+\((\d+)\))? - /)
 
           // If the page is not in English or the browser is not in English, request page in English.
           // Then the title in <h1> will be the English title and Metacritic always uses the English title.
@@ -764,9 +764,9 @@ const sites = {
             console.debug('ShowRottentomatoes: Movie ld+json name', ld[0], year)
             return [ld[0], year]
           } else {
-            const m = document.title.match(/(.+?)\s+(\((\d+)\))? - /)
+            const m = document.title.match(/(.+?)(?:\s+\((\d+)\))? - /)
             console.debug('ShowRottentomatoes: Movie <title>', [m[1], m[3]])
-            return [m[1], parseInt(m[3])]
+            return [m[1], parseInt(m[2])]
           }
         }
       },
@@ -792,7 +792,7 @@ const sites = {
           }
 
           const pageNotEnglish = document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')
-          const pageNotMovieHomePage = !document.title.match(/(.+?)\s+\(.+(\d{4})–.{0,4}\) - IMDb/)
+          const pageNotMovieHomePage = !document.title.match(/(.+?)(?:\s+\(.*?(\d{4}).*\))? - /)
 
           // If the page is not in English or the browser is not in English, request page in English.
           // Then the title in <h1> will be the English title and Metacritic always uses the English title.
@@ -832,7 +832,7 @@ const sites = {
             console.debug('ShowRottentomatoes: TV ld+json name', ld[0], year)
             return [ld[0], year]
           } else {
-            const m = document.title.match(/(.+?)\s+\(.+(\d{4}).+/)
+            const m = document.title.match(/(.+?)(?:\s+\(.*?(\d{4}).*\))? - /)
             console.debug('ShowRottentomatoes: TV <title>', [m[1], m[2]])
             return [m[1], parseInt(m[2])]
           }
