@@ -10,10 +10,10 @@
 // @grant       GM.xmlHttpRequest
 // @grant       GM.setValue
 // @grant       GM.getValue
-// @require     https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js
+// @require     https://code.jquery.com/jquery-4.0.0.js
 // @license     GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @icon        https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/color/72x72/1F345.png
-// @version     50
+// @version     51
 // @connect     www.rottentomatoes.com
 // @connect     algolia.net
 // @connect     www.fandango.com
@@ -569,7 +569,7 @@ function showMeter (arr, time) {
 
   // Shall the following results be collapsed by default?
   if ((arr.length > 1 && arr[0].matchQuality > 10) || arr.length > 10) {
-    $('<span style="color:gray;font-size: x-small">More results...</span>').appendTo(main).click(function () { more.css('display', 'block'); this.parentNode.removeChild(this) })
+    $('<span style="color:gray;font-size: x-small">More results...</span>').appendTo(main).on('click', function () { more.css('display', 'block'); this.parentNode.removeChild(this) })
     const more = div = $('<div style="display:none"></div>').appendTo(main)
   }
 
@@ -582,7 +582,7 @@ function showMeter (arr, time) {
   const sub = $('<div></div>').appendTo(main)
   $('<time style="color:#b6b6b6; font-size: 11px;" datetime="' + time + '" title="' + time.toLocaleTimeString() + ' ' + time.toLocaleDateString() + '">' + minutesSince(time) + '</time>').appendTo(sub)
   $('<a style="color:#b6b6b6; font-size: 11px;" target="_blank" href="' + baseURLOpenTab.replace('{query}', encodeURIComponent(current.query)) + '" title="Open Rotten Tomatoes">@rottentomatoes.com</a>').appendTo(sub)
-  $('<span title="Hide me" style="cursor:pointer; float:right; color:#b6b6b6; font-size: 11px; padding-left:5px;padding-top:3px">&#10062;</span>').appendTo(sub).click(function () {
+  $('<span title="Hide me" style="cursor:pointer; float:right; color:#b6b6b6; font-size: 11px; padding-left:5px;padding-top:3px">&#10062;</span>').appendTo(sub).on('click', function () {
     document.body.removeChild(this.parentNode.parentNode)
   })
 }
