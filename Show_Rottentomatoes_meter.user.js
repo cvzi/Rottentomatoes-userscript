@@ -625,7 +625,7 @@ const sites = {
             }
           }
 
-          const pageNotEnglish = document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')
+          const pageNotEnglish = !(document.documentElement.lang || '').toLowerCase().startsWith('en') || !navigator.language.startsWith('en')
           const pageNotMovieHomePage = !document.title.match(/(.+?)(?:\s+\((\d+)\))? - /)
 
           // If the page is not in English or the browser is not in English, request page in English.
@@ -688,7 +688,7 @@ const sites = {
             }
           }
 
-          const pageNotEnglish = document.querySelector('[for="nav-language-selector"]').textContent.toLowerCase() !== 'en' || !navigator.language.startsWith('en')
+          const pageNotEnglish = !(document.documentElement.lang || '').toLowerCase().startsWith('en') || !navigator.language.startsWith('en')
           const pageNotMovieHomePage = !document.title.match(/(.+?)(?:\s+\(.*?(\d{4}).*\))? - /)
 
           // If the page is not in English or the browser is not in English, request page in English.
